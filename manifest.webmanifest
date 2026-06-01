@@ -1,13 +1,14 @@
 {
   "name": "BWR Painel de Gastos",
   "short_name": "BWR Painel",
-  "description": "Painel de controle de gastos da BWR.",
-  "start_url": "./index.html",
+  "description": "Painel de Gastos Corporativos BWR Seguros",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#1a1a1a",
+  "background_color": "#FFFFFF",
   "theme_color": "#C41E0E",
+  "orientation": "any",
+  "lang": "pt-BR",
   "icons": [
     {
       "src": "icons/icon-192.png",

@@ -1,7 +1,20 @@
 <!DOCTYPE html>
+<!--
+Pacote PWA ajustado para GitHub Pages.
+Arquivos principais: index.html, manifest.webmanifest, service-worker.js e icons/.
+-->
+
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="application-name" content="BWR Painel">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BWR Painel">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C41E0E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>BWR · Painel de Gastos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +37,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--g50);col
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 #ml{display:flex;flex:1;overflow:hidden}
 /* HEADER */
-#hdr{height:var(--hh);background:var(--white);border-bottom:1px solid var(--g200);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:100}
+#hdr{height:var(--hh);background:var(--white);border-bottom:1px solid var(--g200);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:100;position:sticky;top:0}
 #mt{display:none;background:none;border:none;cursor:pointer;color:var(--g600);font-size:20px;padding:4px}
 #logo-w img{height:34px;object-fit:contain}
 #hsp{flex:1}
@@ -193,18 +206,7 @@ tbody tr:hover td{background:var(--g50)}
   #mb{border-radius:16px}
 }
 </style>
-
-<!-- Configurações PWA / App instalado -->
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#C41E0E">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="BWR Painel">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
 </head>
 <body>
 <!-- LOGIN -->
@@ -1138,15 +1140,14 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 </script>
 
 <script>
-// Registro do Service Worker para melhorar o comportamento como app instalado (PWA).
+// PWA: registro do service worker externo para GitHub Pages
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./service-worker.js').catch(function (error) {
-      console.warn('Service Worker não registrado:', error);
-    });
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(function () { console.log('Service Worker registrado.'); })
+      .catch(function (error) { console.log('Service Worker não registrado:', error); });
   });
 }
 </script>
-
 </body>
 </html>
