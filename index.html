@@ -336,37 +336,37 @@ tbody tr:hover td{background:var(--g50)}
           <select id="r-area"><option value="">Todas as áreas</option></select>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
-          <div class="card" onclick="showToast('Exportando Base de Lançamentos...')" style="cursor:pointer">
+          <div class="card" onclick="exportRel('base')" style="cursor:pointer">
             <div class="cico g"><i class="fa-solid fa-table"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Base de Lançamentos</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Todos os registros detalhados</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
           </div>
-          <div class="card" onclick="showToast('Exportando Por Centro de Custo...')" style="cursor:pointer">
+          <div class="card" onclick="exportRel('cc')" style="cursor:pointer">
             <div class="cico b"><i class="fa-solid fa-layer-group"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Por Centro de Custo</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Total por categoria</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
           </div>
-          <div class="card" onclick="showToast('Exportando Por Usuário...')" style="cursor:pointer">
+          <div class="card" onclick="exportRel('usuario')" style="cursor:pointer">
             <div class="cico a"><i class="fa-solid fa-user"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Por Usuário</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Total por supervisão</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
           </div>
-          <div class="card" onclick="showToast('Exportando Por Departamento...')" style="cursor:pointer">
+          <div class="card" onclick="exportRel('depto')" style="cursor:pointer">
             <div class="cico r"><i class="fa-solid fa-building"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Por Departamento</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Total por área</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
           </div>
-          <div class="card" onclick="showToast('Exportando Por Cartão...')" style="cursor:pointer">
+          <div class="card" onclick="exportRel('cartao')" style="cursor:pointer">
             <div class="cico g"><i class="fa-solid fa-credit-card"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Por Cartão</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Total por cartão corporativo</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
           </div>
-          <div class="card" onclick="showToast('Exportando Parcelas Futuras...')" style="cursor:pointer">
+          <div class="card" onclick="exportRel('parcelas')" style="cursor:pointer">
             <div class="cico a"><i class="fa-solid fa-calendar-plus"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Parcelas Futuras</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Compromissos parcelados</div>
@@ -486,12 +486,24 @@ tbody tr:hover td{background:var(--g50)}
   <input type="text" id="f-dept2" class="fau" readonly>
 </div>
     <div class="fr"><label>Observações</label><textarea id="f-obs" placeholder="Informações adicionais..."></textarea></div>
-    <div class="fr"><label>Comprovante (imagem/PDF)</label><input type="file" accept="image/*,.pdf" style="padding:6px"></div>
+    <div class="fr"><label>Comprovante (imagem/PDF)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="bs" onclick="document.getElementById('f-foto-cam').click()" style="flex:1;min-width:120px"><i class="fa-solid fa-camera"></i> Tirar foto</button>
+        <button type="button" class="bs" onclick="document.getElementById('f-foto-gal').click()" style="flex:1;min-width:120px"><i class="fa-solid fa-image"></i> Galeria / arquivo</button>
+      </div>
+      <input type="file" id="f-foto-cam" accept="image/*" capture="environment" style="display:none" onchange="onComprovante(this)">
+      <input type="file" id="f-foto-gal" accept="image/*,application/pdf" style="display:none" onchange="onComprovante(this)">
+      <div id="f-foto-info" style="font-size:12px;color:var(--g500);margin-top:6px"></div>
+    </div>
     <div class="mact">
       <button class="bs" onclick="closeM()">Cancelar</button>
       <button class="bp" onclick="saveL()"><i class="fa-solid fa-check"></i> Salvar</button>
     </div>
   </div>
+</div>
+<div id="comp-view" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px" onclick="this.style.display='none'">
+  <img id="comp-img" style="max-width:92vw;max-height:80vh;border-radius:8px;background:#fff" alt="Comprovante">
+  <button class="bs" onclick="document.getElementById('comp-view').style.display='none'">Fechar</button>
 </div>
 <div id="toast"></div>
 
@@ -623,6 +635,45 @@ let lancamentos = [{"id":1,"data":"08/03/2026","desc":"PG *PMFLEX        02/08",
 {"id": 397, "data": "13/04/2026", "desc": "PAC*ACADEMIAS*GREENLIF", "area": "Diretoria", "cc": "SAÚDE", "cartao": "ROSILENE CUNHA PORTO PEDROSO - FINAL 0842 (venc.20)", "forma": "avista", "valor": 499.0, "user": "Rose", "mes": "MAIO", "status": "ativo"},
 {"id": 398, "data": "02/05/2026", "desc": "TIM*11981270287", "area": "Diretoria", "cc": "TELEFONIA", "cartao": "ROSILENE CUNHA PORTO PEDROSO - FINAL 0842 (venc.20)", "forma": "avista", "valor": 73.99, "user": "Rose", "mes": "MAIO", "status": "ativo"}];
 
+// ── PERSISTÊNCIA LOCAL (dados salvos no navegador) ─────
+const LS_KEY = 'bwr_lanc_v1';
+function persistLanc(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(lancamentos)); }
+  catch(e){ showToast('Atenção: memória local cheia — alteração não persistida'); }
+}
+(function restoreLanc(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_KEY)||'null');
+    if(Array.isArray(s) && s.length) lancamentos = s;
+  }catch(e){}
+  nextId = lancamentos.reduce((m,l)=>Math.max(m,(l.id||0)+1), 500);
+})();
+
+// ── COMPROVANTES (arquivos salvos no IndexedDB) ────────
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open('bwr_comp', 1);
+    r.onupgradeneeded = ()=>r.result.createObjectStore('comp');
+    r.onsuccess = ()=>res(r.result);
+    r.onerror = ()=>rej(r.error);
+  });
+}
+async function compSave(id, dataUrl){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('comp','readwrite');
+    tx.objectStore('comp').put(dataUrl, id);
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+async function compLoad(id){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const rq = db.transaction('comp').objectStore('comp').get(id);
+    rq.onsuccess = ()=>res(rq.result||null); rq.onerror = ()=>rej(rq.error);
+  });
+}
+
 // ── LOGIN ──────────────────────────────────────────────
 function doLogin(){
   const email = document.getElementById('le').value.trim().toLowerCase();
@@ -729,11 +780,61 @@ function toggleSB(){document.getElementById('sb').classList.toggle('open');docum
 function closeSB(){document.getElementById('sb').classList.remove('open');document.getElementById('ov').classList.remove('open');}
 
 // ── MODAL ──────────────────────────────────────────────
-function openM(){document.getElementById('mo').classList.add('open');document.getElementById('f-desc').focus();}
+function openM(){limparComp();document.getElementById('mo').classList.add('open');document.getElementById('f-desc').focus();}
 function closeM(){document.getElementById('mo').classList.remove('open');}
 document.getElementById('mo').addEventListener('click',e=>{if(e.target===document.getElementById('mo'))closeM();});
 function togP(){document.getElementById('f-pr').style.display=document.getElementById('f-forma').value==='parcelado'?'block':'none';}
 function maskM(el){let v=el.value.replace(/\D/g,'');v=(parseInt(v||'0')/100).toFixed(2);el.value=v.replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+
+// ── COMPROVANTE: tirar foto / galeria ──────────────────
+let pendingComp = null;
+function onComprovante(inp){
+  const f = inp.files && inp.files[0];
+  if(!f){ return; }
+  const info = document.getElementById('f-foto-info');
+  if(f.type === 'application/pdf'){
+    if(f.size > 4*1024*1024){ showToast('PDF muito grande (máx. 4 MB)'); inp.value=''; return; }
+    const rd = new FileReader();
+    rd.onload = ()=>{ pendingComp = rd.result; info.innerHTML = '📎 '+f.name+' anexado &nbsp;<a href="#" onclick="limparComp();return false" style="color:var(--red)">remover</a>'; };
+    rd.readAsDataURL(f);
+  } else if(f.type.startsWith('image/')){
+    const img = new Image();
+    img.onload = ()=>{
+      const MAX = 1400;
+      const esc = Math.min(1, MAX/Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width*esc); cv.height = Math.round(img.height*esc);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      pendingComp = cv.toDataURL('image/jpeg', 0.72);
+      URL.revokeObjectURL(img.src);
+      info.innerHTML = '📷 Foto anexada &nbsp;<a href="#" onclick="limparComp();return false" style="color:var(--red)">remover</a>';
+    };
+    img.onerror = ()=>{ showToast('Não foi possível ler a imagem'); inp.value=''; };
+    img.src = URL.createObjectURL(f);
+  } else {
+    showToast('Formato não suportado (use imagem ou PDF)');
+  }
+  inp.value = '';
+}
+function limparComp(){
+  pendingComp = null;
+  const info = document.getElementById('f-foto-info');
+  if(info) info.textContent = '';
+}
+async function verComp(id){
+  const d = await compLoad(id).catch(()=>null);
+  if(!d){ showToast('Comprovante não encontrado neste aparelho'); return; }
+  if(d.startsWith('data:application/pdf')){
+    const bin = atob(d.split(',')[1]);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
+    window.open(url,'_blank');
+  } else {
+    document.getElementById('comp-img').src = d;
+    document.getElementById('comp-view').style.display = 'flex';
+  }
+}
 
 function saveL(){
   const desc=document.getElementById('f-desc').value.trim();
@@ -742,20 +843,33 @@ function saveL(){
   const data=document.getElementById('f-data').value;
   if(!desc||!valorStr||!cc||!data){showToast('Preencha os campos obrigatórios');return;}
   const valor=parseFloat(valorStr);
+  if(isNaN(valor)||valor<=0){showToast('Valor inválido');return;}
   const forma=document.getElementById('f-forma').value;
   const parc=forma==='parcelado'?parseInt(document.getElementById('f-parc').value):1;
   const vparcela=valor/parc;
+  const obs=document.getElementById('f-obs').value.trim();
+  const [ano,mesNum,dia]=data.split('-').map(Number);
+  const compId = pendingComp ? nextId : null;
   for(let i=0;i<parc;i++){
-    const d=new Date(data);d.setMonth(d.getMonth()+i);
-    const df=d.toLocaleDateString('pt-BR').slice(0,8).replace(/(\d{2})\/(\d{2})\/(\d{2})\d{2}/,'$1/$2/$3');
+    const d=new Date(ano, mesNum-1+i, dia);
+    const df=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
     const mesN=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'][d.getMonth()];
     lancamentos.unshift({
-      id:nextId++,data:d.toLocaleDateString('pt-BR',{day:'2d',month:'2d',year:'2d'}).replace('undefined',df),
+      id:nextId++,data:df,
       desc:desc+(parc>1?` (${i+1}/${parc})`:''),
       area:(CU.area==='Emissão / Pós-vendas' ? document.getElementById('f-subarea').value : CU.area),cc,cartao:document.getElementById('f-cartao').value,
-      forma,valor:Math.round(vparcela*100)/100,user:CU.name,mes:mesN,status:'ativo'
+      forma,valor:Math.round(vparcela*100)/100,user:CU.name,mes:mesN,status:'ativo',obs,
+      comp:(i===0 && compId!==null)?1:0
     });
   }
+  if(pendingComp && compId!==null){
+    compSave(compId, pendingComp).catch(()=>showToast('Falha ao salvar o comprovante'));
+  }
+  persistLanc();
+  document.getElementById('f-desc').value='';
+  document.getElementById('f-valor').value='';
+  document.getElementById('f-obs').value='';
+  limparComp();
   closeM();renderDash();renderLanc();renderBudget();
   showToast('Lançamento salvo!');
 }
@@ -959,13 +1073,13 @@ function renderLanc(){
     <td style="font-size:11px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.cartao}">${l.cartao?.split(' - FINAL')[0]||'—'}</td>
     <td class="tv neg">${fmt(l.valor)}</td>
     <td><span class="badge bgr">${l.mes}</span></td>
-    <td><button onclick="openEditM(${l.id})" style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--primary);font-size:13px" title="Editar lançamento"><i class="fa-solid fa-pen-to-square"></i></button></td>
+    <td><button onclick="openEditM(${l.id})" style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--primary);font-size:13px" title="Editar lançamento"><i class="fa-solid fa-pen-to-square"></i></button>${l.comp?`<button onclick="verComp(${l.id})" style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--g500);font-size:13px" title="Ver comprovante"><i class="fa-solid fa-paperclip"></i></button>`:''}</td>
   </tr>`).join('');
   document.getElementById('lm').innerHTML=list.map(l=>`<div class="mc">
     <div class="mct"><span class="mcd">${l.desc}</span><span class="mcv">${fmt(l.valor)}</span></div>
     <div class="mcr"><span class="badge bgr">${l.area}</span><span class="mci">${l.data}</span><span class="mci">${l.mes}</span></div>
     <div class="mcr" style="margin-top:3px"><span class="mci" style="font-size:11px">${l.cc}</span></div>
-    <div class="mcr" style="margin-top:4px"><button onclick="openEditM(${l.id})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--primary);background:transparent;color:var(--primary);cursor:pointer;font-family:'DM Sans',sans-serif"><i class="fa-solid fa-pen-to-square"></i> Editar</button></div>
+    <div class="mcr" style="margin-top:4px"><button onclick="openEditM(${l.id})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--primary);background:transparent;color:var(--primary);cursor:pointer;font-family:'DM Sans',sans-serif"><i class="fa-solid fa-pen-to-square"></i> Editar</button>${l.comp?`<button onclick="verComp(${l.id})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--g300);background:transparent;color:var(--g500);cursor:pointer;font-family:'DM Sans',sans-serif"><i class="fa-solid fa-paperclip"></i> Comprovante</button>`:''}</div>
   </div>`).join('');
   renderDash();
 }
@@ -1043,6 +1157,7 @@ function saveEdit(){
   }
 
   lancamentos[idx] = {...lancamentos[idx], data, valor, desc, cc, area, cartao, obs};
+  persistLanc();
 
   closeEditM();
   renderDash();
@@ -1076,6 +1191,7 @@ function cruzarLancamentos(){
     }
   });
   if(cruzamentos>0){
+    persistLanc();
     renderDash(); renderLanc(); renderBudget();
     showToast(`${cruzamentos} lançamento(s) cruzado(s) ✓`);
   } else {
@@ -1132,6 +1248,63 @@ function renderHistorico(){
     <td>${l.campo}</td>
     <td style="font-size:12px;color:var(--g400)">${l.ant}</td>
     <td style="font-size:12px">${l.nov}</td></tr>`).join('');
+}
+
+// ── RELATÓRIOS (exportação CSV → Excel) ────────────────
+function relBase(){
+  let list = getMyLanc().filter(l=>l.valor>0);
+  const mes = document.getElementById('r-mes').value;
+  const area = document.getElementById('r-area').value;
+  if(mes) list = list.filter(l=>l.mes===mes);
+  if(area) list = list.filter(l=>l.area===area);
+  return list;
+}
+function csvCell(v){
+  v = (v===null||v===undefined) ? '' : String(v);
+  return (v.includes(';')||v.includes('"')||v.includes('\n')) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function csvNum(v){ return v.toFixed(2).replace('.',','); }
+function baixarCSV(nome, linhas){
+  const csv = String.fromCharCode(0xFEFF)+linhas.map(l=>l.map(csvCell).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},500);
+}
+function exportRel(tipo){
+  const list = relBase();
+  if(!list.length){ showToast('Nenhum lançamento para exportar com esses filtros'); return; }
+  const mes = document.getElementById('r-mes').value || 'TODOS';
+  let linhas, nome;
+  if(tipo==='base'){
+    linhas = [['Data','Descrição','Área','Centro de Custo','Cartão','Forma','Valor (R$)','Responsável','Mês','Observações']];
+    list.forEach(l=>linhas.push([l.data,l.desc,l.area,l.cc,l.cartao||'',l.forma||'',csvNum(l.valor),l.user||'',l.mes||'',l.obs||'']));
+    linhas.push(['','','','','','TOTAL: '+csvNum(list.reduce((s,l)=>s+l.valor,0)),'','','','']);
+    nome = 'BWR_Base_Lancamentos';
+  } else if(tipo==='cc'||tipo==='depto'||tipo==='usuario'||tipo==='cartao'){
+    const campo = {cc:'cc',depto:'area',usuario:'user',cartao:'cartao'}[tipo];
+    const rotulo = {cc:'Centro de Custo',depto:'Departamento',usuario:'Usuário',cartao:'Cartão'}[tipo];
+    const g = {};
+    list.forEach(l=>{const k=l[campo]||'—'; if(!g[k])g[k]={n:0,v:0}; g[k].n++; g[k].v+=l.valor;});
+    linhas = [[rotulo,'Lançamentos','Total (R$)']];
+    Object.entries(g).sort((a,b)=>b[1].v-a[1].v).forEach(([k,d])=>linhas.push([k,d.n,csvNum(d.v)]));
+    linhas.push(['TOTAL GERAL',list.length,csvNum(list.reduce((s,l)=>s+l.valor,0))]);
+    nome = 'BWR_Por_'+rotulo.replace(/ /g,'_');
+  } else if(tipo==='parcelas'){
+    const re = /\((\d+)\/(\d+)\)/;
+    const pl = list.filter(l=>{const m=l.desc.match(re); return m && Number(m[1])<Number(m[2]);});
+    if(!pl.length){ showToast('Nenhuma parcela futura encontrada'); return; }
+    linhas = [['Data','Descrição','Parcela atual','Total de parcelas','Parcelas restantes','Área','Cartão','Valor da parcela (R$)','Valor restante (R$)']];
+    pl.forEach(l=>{
+      const m=l.desc.match(re);
+      const rest=Number(m[2])-Number(m[1]);
+      linhas.push([l.data,l.desc,m[1],m[2],rest,l.area,l.cartao||'',csvNum(l.valor),csvNum(l.valor*rest)]);
+    });
+    nome = 'BWR_Parcelas_Futuras';
+  } else { return; }
+  baixarCSV(nome+'_'+mes+'.csv', linhas);
+  showToast('Relatório exportado ✓ (abra no Excel)');
 }
 
 // ── UTILS ──────────────────────────────────────────────
