@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bwr-painel-gastos-v4';
+const CACHE_NAME = 'bwr-painel-gastos-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -26,6 +26,8 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  // Banco de dados (Supabase) e outras origens: sempre direto da rede, nunca cache
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   const isPage = event.request.mode === 'navigate' || event.request.url.endsWith('/index.html');
   if (isPage) {
     // Páginas: rede primeiro (garante versão atualizada), cache só quando offline
