@@ -331,7 +331,7 @@ tbody tr:hover td{background:var(--g50)}
         <div class="ptit">Meus Lançamentos</div>
         <div class="psub">Consulte e gerencie os lançamentos</div>
         <div class="fb">
-          <select id="f-mes" onchange="renderLanc()"><option value="">Todos os meses</option><option value="MAIO" selected>Maio 2026</option><option value="JUNHO">Junho 2026</option></select>
+          <select id="f-mes" onchange="renderLanc()"><option value="">Todos os meses</option></select>
           <select id="f-area" onchange="renderLanc()"><option value="">Todas as áreas</option></select>
           <select id="f-cc" onchange="renderLanc()"><option value="">Todos os centros</option></select>
           <select id="f-cartao-lanc" style="display:none" onchange="renderLanc()"><option value="">Todos os cartões</option></select>
@@ -399,25 +399,37 @@ tbody tr:hover td{background:var(--g50)}
       <div id="page-budget" class="page">
         <div class="ptit">Budget Mensal</div>
         <div class="psub">Controle de limites por área</div>
-        <div class="tw"><table><thead><tr><th>Área</th><th>Supervisão</th><th>Cartão Final</th><th>Limite Mensal</th><th>Gasto Maio</th><th>Gasto Junho</th><th>Saldo</th><th>Uso %</th></tr></thead>
-        <tbody id="bt"></tbody></table></div>
+        <div class="fb" style="margin-bottom:14px">
+          <select id="b-mes" onchange="renderBudget()"><option value="">Todos os meses</option></select>
+          <button class="badd" id="btn-edit-budget" style="display:none;background:var(--g700)" onclick="openBudgetEdit()"><i class="fa-solid fa-pen"></i> Editar limites</button>
+        </div>
+        <div class="tw">
+          <div class="ts dt"><table><thead><tr><th>Área</th><th>Supervisão</th><th>Cartão Final</th><th>Limite Mensal</th><th>Gasto no Mês</th><th>Saldo</th><th>Uso %</th></tr></thead>
+          <tbody id="bt"></tbody></table></div>
+          <div class="ml" id="bm"></div>
+        </div>
       </div>
 
       <!-- USUÁRIOS (admin only) -->
       <div id="page-usuarios" class="page">
         <div class="ptit">Usuários e Permissões</div>
         <div class="psub">Gerencie os usuários do sistema</div>
-        <div style="margin-bottom:14px"><button class="badd"><i class="fa-solid fa-user-plus"></i> Novo Usuário</button></div>
-        <div class="tw"><table><thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Área</th><th>Cartão</th><th>Status</th></tr></thead>
-        <tbody id="ut"></tbody></table></div>
+        <div class="tw">
+          <div class="ts dt"><table><thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Área</th><th>Cartão</th><th>Status</th></tr></thead>
+          <tbody id="ut"></tbody></table></div>
+          <div class="ml" id="um"></div>
+        </div>
       </div>
 
       <!-- HISTÓRICO (admin only) -->
       <div id="page-historico" class="page">
         <div class="ptit">Histórico de Alterações</div>
         <div class="psub">Auditoria de modificações</div>
-        <div class="tw"><table><thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Campo</th><th>Antes</th><th>Depois</th></tr></thead>
-        <tbody id="ht"></tbody></table></div>
+        <div class="tw">
+          <div class="ts dt"><table><thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Campo</th><th>Antes</th><th>Depois</th></tr></thead>
+          <tbody id="ht"></tbody></table></div>
+          <div class="ml" id="hm"></div>
+        </div>
       </div>
     </main>
   </div>
@@ -535,15 +547,62 @@ const LOGO = 'data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAFfCAYAAAC2m6h
 // Usuários e senhas agora ficam no banco de dados (Supabase Auth).
 // A lista de áreas/orçamentos abaixo continua local.
 
-const BUDGETS = {
-  'Diretoria':  {lim:140000, extra:[{n:'Rose venc.20',lim:104860},{n:'Rose venc.26',lim:120140}]},
-  'Emissão / Pós-vendas': {lim:2000},
-  'Matriz':     {lim:60000},
-  'Alpha':      {lim:4000},
-  'Lençóis':   {lim:2000},
-  'Serv. Gerais':{lim:3000},
-  'Apprenti':   {lim:1000}
+const BUDGETS_DEFAULT = {
+  'Diretoria':  {lim:100000},
+  'Emissão / Pós-vendas': {lim:5000},
+  'Matriz':     {lim:10000},
+  'Alpha':      {lim:5000},
+  'Lençóis':   {lim:5000},
+  'Serv. Gerais':{lim:5000},
+  'Apprenti':   {lim:5000}
 };
+let BUDGETS = JSON.parse(JSON.stringify(BUDGETS_DEFAULT));
+
+async function loadBudgets(){
+  try{
+    const {data} = await sb.from('app_config').select('value').eq('key','budgets').maybeSingle();
+    if(data && data.value){
+      Object.keys(BUDGETS).forEach(a=>{ if(data.value[a]!=null) BUDGETS[a]={lim:Number(data.value[a])}; });
+    }
+  }catch(e){ /* tabela app_config ainda não criada — usa os padrões */ }
+}
+async function saveBudgets(novo){
+  const {error} = await sb.from('app_config').upsert({key:'budgets', value:novo});
+  if(error){ showToast('Erro ao salvar limites: '+error.message); return false; }
+  Object.keys(novo).forEach(a=>{ BUDGETS[a]={lim:Number(novo[a])}; });
+  return true;
+}
+function openBudgetEdit(){
+  if(!CU || CU.profile!=='admin') return;
+  const campos=Object.keys(BUDGETS).map(a=>`
+    <label style="display:block;margin-bottom:11px;font-size:13px;color:var(--g700)">${a}
+      <span style="position:relative;display:block"><span style="position:absolute;left:9px;top:11px;color:var(--g400);font-size:13px">R$</span>
+      <input type="text" data-area="${a}" value="${BUDGETS[a].lim.toLocaleString('pt-BR')}" inputmode="numeric"
+        style="width:100%;padding:9px 9px 9px 30px;border:1px solid var(--g300);border-radius:8px;margin-top:4px;font-family:inherit;box-sizing:border-box"></span>
+    </label>`).join('');
+  const ov=document.createElement('div');
+  ov.id='mo-budget';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:22px;max-width:380px;width:100%;max-height:85vh;overflow:auto">
+    <div style="font-weight:700;margin-bottom:14px;font-size:16px">Editar limites mensais</div>
+    ${campos}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="document.getElementById('mo-budget').remove()" style="flex:1;padding:10px;border:1px solid var(--g300);background:#fff;border-radius:8px;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button onclick="saveBudgetEdit()" style="flex:1;padding:10px;border:none;background:var(--red);color:#fff;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit">Salvar</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+}
+async function saveBudgetEdit(){
+  const novo={};
+  document.querySelectorAll('#mo-budget input[data-area]').forEach(i=>{
+    novo[i.dataset.area]=parseFloat(String(i.value).replace(/\./g,'').replace(',','.'))||0;
+  });
+  if(await saveBudgets(novo)){
+    document.getElementById('mo-budget').remove();
+    renderBudget(); renderDash();
+    showToast('Limites atualizados ✓');
+  }
+}
 
 
 let CU = null;
@@ -688,7 +747,7 @@ async function entrar(){
   }
   CU = {email:p.email, name:p.name, area:p.area, profile:p.role, initials:p.initials,
         cartoes:p.cartoes||[], areas:p.areas||[p.area]};
-  await loadLancamentos();
+  await Promise.all([loadLancamentos(), loadBudgets()]);
   startApp();
   return true;
 }
@@ -1054,13 +1113,16 @@ function buildAreaFilter(){
     sel.disabled=false;
   }
 
-  // Filtro de cartão: só para Admin e Diretoria — opções fixas conforme solicitado
+  // Filtro de cartão: só para Diretoria e Financeiro (admin) — opções vindas dos dados reais
   const selCartao=document.getElementById('f-cartao-lanc');
   if(CU.profile==='admin'||CU.profile==='diretoria'){
-    selCartao.innerHTML=`<option value="">Todos os cartões</option>
-      <option value="BWR">Cartão BWR — Diretoria / Rose Titular</option>
-      <option value="0842">Cartão Final 0842 venc. 20</option>
-      <option value="9142">Cartão Final 9142 venc. 26</option>`;
+    const mapc={};
+    getMyLanc().forEach(l=>{ const f=ultimoFinal4(l.cartao); if(f) mapc[f]=l.cartao; });
+    const opts=Object.entries(mapc)
+      .sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))
+      .map(([f,nome])=>`<option value="${f}">${(nome.split(' - FINAL')[0]||nome)} · final ${f}</option>`)
+      .join('');
+    selCartao.innerHTML='<option value="">Todos os cartões</option>'+opts;
     selCartao.style.display='';
   } else {
     selCartao.style.display='none';
@@ -1081,7 +1143,7 @@ function renderLanc(){
   if(mes) list=list.filter(l=>l.mes===mes);
   if(area) list=list.filter(l=>l.area===area);
   if(cc) list=list.filter(l=>l.cc===cc);
-  if(cartaoFiltro) list=list.filter(l=>l.cartao?.includes(cartaoFiltro));
+  if(cartaoFiltro) list=list.filter(l=>ultimoFinal4(l.cartao)===cartaoFiltro);
   list=list.filter(l=>l.valor>0);
   document.getElementById('lc2').textContent=list.length+' lançamentos';
   document.getElementById('lt').innerHTML=list.map(l=>`<tr>
@@ -1230,30 +1292,46 @@ const AREA_RESP = {
   'Apprenti':             {nome:'Karen',    cartao:'7241'}
 };
 function renderBudget(){
-  const rows=Object.entries(BUDGETS).map(([area,b])=>{
+  const mes=document.getElementById('b-mes')?.value || '';
+  const editBtn=document.getElementById('btn-edit-budget');
+  if(editBtn) editBtn.style.display=(CU&&CU.profile==='admin')?'inline-flex':'none';
+  const sub=document.querySelector('#page-budget .psub');
+  if(sub) sub.textContent='Controle de limites por área'+(mes?(' · '+mes.charAt(0)+mes.slice(1).toLowerCase()):' · todos os meses');
+
+  const dados=Object.entries(BUDGETS).map(([area,b])=>{
     const u=AREA_RESP[area];
-    const gMaio=lancamentos.filter(l=>l.area===area&&l.mes==='MAIO'&&l.valor>0).reduce((s,l)=>s+l.valor,0);
-    const gJunho=lancamentos.filter(l=>l.area===area&&l.mes==='JUNHO'&&l.valor>0).reduce((s,l)=>s+l.valor,0);
-    const gTotal=gMaio+gJunho;
-    const saldo=b.lim-gTotal;
-    const pct=Math.min(100,Math.round(gTotal/b.lim*100));
+    const gasto=lancamentos.filter(l=>l.area===area&&(!mes||l.mes===mes)&&l.valor>0).reduce((s,l)=>s+l.valor,0);
+    const saldo=b.lim-gasto;
+    const pct=Math.min(100,Math.round(gasto/b.lim*100));
     const cor=pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-    return`<tr><td><strong>${area}</strong></td><td>${u?u.nome:'—'}</td>
-      <td style="font-size:11px">${u?u.cartao:'—'}</td>
-      <td class="tv">${fmt(b.lim)}</td><td class="tv neg">${fmt(gMaio)}</td><td class="tv neg">${fmt(gJunho)}</td>
-      <td class="tv" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(saldo)}</td>
-      <td><div style="display:flex;align-items:center;gap:6px">
-        <div style="flex:1;height:6px;background:var(--g200);border-radius:3px;overflow:hidden">
-          <div style="width:${pct}%;height:6px;background:${cor};border-radius:3px"></div></div>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${cor};min-width:32px">${pct}%</span>
-      </div></td></tr>`;
+    return {area,nome:u?u.nome:'—',cartao:u?u.cartao:'—',lim:b.lim,gasto,saldo,pct,cor};
   });
-  document.getElementById('bt').innerHTML=rows.join('');
+
+  document.getElementById('bt').innerHTML=dados.map(r=>`<tr>
+    <td><strong>${r.area}</strong></td><td>${r.nome}</td>
+    <td style="font-size:11px">${r.cartao}</td>
+    <td class="tv">${fmt(r.lim)}</td><td class="tv neg">${fmt(r.gasto)}</td>
+    <td class="tv" style="color:${r.saldo>=0?'var(--green)':'var(--red)'}">${fmt(r.saldo)}</td>
+    <td><div style="display:flex;align-items:center;gap:6px">
+      <div style="flex:1;height:6px;background:var(--g200);border-radius:3px;overflow:hidden">
+        <div style="width:${r.pct}%;height:6px;background:${r.cor};border-radius:3px"></div></div>
+      <span style="font-size:11px;font-family:'DM Mono',monospace;color:${r.cor};min-width:32px">${r.pct}%</span>
+    </div></td></tr>`).join('');
+
+  document.getElementById('bm').innerHTML=dados.map(r=>`<div class="mc">
+    <div class="mct"><span class="mcd">${r.area}</span><span class="mcv">${fmt(r.gasto)}</span></div>
+    <div class="mcr"><span class="mci">${r.nome}</span><span class="mci">Cartão ${r.cartao}</span></div>
+    <div class="mcr" style="margin-top:6px"><span class="mci">Limite ${fmt(r.lim)}</span>
+      <span class="mci" style="color:${r.saldo>=0?'var(--green)':'var(--red)'}">Saldo ${fmt(r.saldo)}</span></div>
+    <div style="height:6px;background:var(--g200);border-radius:3px;overflow:hidden;margin-top:8px">
+      <div style="width:${r.pct}%;height:6px;background:${r.cor};border-radius:3px"></div></div>
+    <div class="mcr" style="margin-top:4px"><span class="mci" style="color:${r.cor};font-weight:600">${r.pct}% utilizado</span></div>
+  </div>`).join('');
 }
 
 // ── RENDER USUÁRIOS (admin) ────────────────────────────
 async function renderUsuarios(){
-  if(!CU || CU.profile!=='admin'){ document.getElementById('ut').innerHTML=''; return; }
+  if(!CU || CU.profile!=='admin'){ document.getElementById('ut').innerHTML=''; document.getElementById('um').innerHTML=''; return; }
   const [rEmails, rProfs, rReqs] = await Promise.all([
     sb.from('allowed_emails').select('*'),
     sb.from('profiles').select('*'),
@@ -1264,6 +1342,9 @@ async function renderUsuarios(){
     .sort((a,b)=>(a.created_at||'')<(b.created_at||'')?-1:1);
   const pmap={}; profs.forEach(p=>pmap[p.email]=p);
 
+  const badge=u=>`<span class="badge ${u.role==='admin'?'br':u.role==='diretoria'?'bb':'bg'}">${u.role==='admin'?'Admin':u.role==='diretoria'?'Diretoria':'Supervisão'}</span>`;
+  const statusTxt=ativo=>ativo?'<span class="dot"></span> Ativo':'<span style="color:var(--amber);font-size:12px">Aguardando 1º acesso</span>';
+
   document.getElementById('ut').innerHTML=emails.map(u=>{
     const ativo=!!pmap[u.email];
     const cartoes=Array.isArray(u.cartoes)?u.cartoes:[];
@@ -1271,10 +1352,21 @@ async function renderUsuarios(){
     <td><div style="display:flex;align-items:center;gap:8px">
       <div class="uav" style="width:28px;height:28px;font-size:10px">${u.initials}</div><strong>${u.name}</strong></div></td>
     <td style="font-size:12px;color:var(--g500)">${u.email}</td>
-    <td><span class="badge ${u.role==='admin'?'br':u.role==='diretoria'?'bb':'bg'}">${u.role==='admin'?'Admin':u.role==='diretoria'?'Diretoria':'Supervisão'}</span></td>
+    <td>${badge(u)}</td>
     <td>${u.area}</td>
     <td style="font-size:11px">${cartoes[0]||'Sem cartão'}</td>
-    <td>${ativo?'<span class="dot"></span> Ativo':'<span style="color:var(--amber);font-size:12px">Aguardando 1º acesso</span>'}</td></tr>`;
+    <td>${statusTxt(ativo)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('um').innerHTML=emails.map(u=>{
+    const ativo=!!pmap[u.email];
+    const cartoes=Array.isArray(u.cartoes)?u.cartoes:[];
+    return `<div class="mc">
+      <div class="mct"><span style="display:flex;align-items:center;gap:8px"><span class="uav" style="width:26px;height:26px;font-size:10px">${u.initials}</span><span class="mcd">${u.name}</span></span>${badge(u)}</div>
+      <div class="mcr" style="margin-top:4px"><span class="mci" style="font-size:11px;word-break:break-all">${u.email}</span></div>
+      <div class="mcr" style="margin-top:4px"><span class="mci">${u.area}</span><span class="mci">${statusTxt(ativo)}</span></div>
+      <div class="mcr" style="margin-top:3px"><span class="mci" style="font-size:11px">${cartoes[0]||'Sem cartão'}</span></div>
+    </div>`;
   }).join('');
 
   let box=document.getElementById('reqs-box');
@@ -1318,13 +1410,19 @@ function renderHistorico(){
     {dt:'31/05/26 13:19',user:'Sistema',acao:'Importação',campo:'Fatura Business JUNHO',ant:'—',nov:'130 lançamentos importados'},
     {dt:'20/05/26 00:00',user:'Sistema',acao:'Atualização',campo:'Budget Rose venc.20',ant:'R$50.879,97',nov:'R$55.659,49 pago'},
   ];
+  const bd=a=>`<span class="badge ${a==='Importação'?'bb':a==='Criação'?'bg':'ba'}">${a}</span>`;
   document.getElementById('ht').innerHTML=logs.map(l=>`<tr>
     <td style="font-size:12px;font-family:'DM Mono',monospace">${l.dt}</td>
     <td>${l.user}</td>
-    <td><span class="badge ${l.acao==='Importação'?'bb':l.acao==='Criação'?'bg':'ba'}">${l.acao}</span></td>
+    <td>${bd(l.acao)}</td>
     <td>${l.campo}</td>
     <td style="font-size:12px;color:var(--g400)">${l.ant}</td>
     <td style="font-size:12px">${l.nov}</td></tr>`).join('');
+  document.getElementById('hm').innerHTML=logs.map(l=>`<div class="mc">
+    <div class="mct"><span class="mcd">${l.campo}</span>${bd(l.acao)}</div>
+    <div class="mcr" style="margin-top:4px"><span class="mci" style="font-family:'DM Mono',monospace;font-size:11px">${l.dt}</span><span class="mci">${l.user}</span></div>
+    <div class="mcr" style="margin-top:4px"><span class="mci" style="font-size:11px">${l.ant} → <strong>${l.nov}</strong></span></div>
+  </div>`).join('');
 }
 
 // ── IMPORTAÇÃO DE FATURA (Itaú Empresas, Excel) ────────
@@ -1359,6 +1457,11 @@ function chaveLanc(l){
   return [l.data, Number(l.valor).toFixed(2),
     String(l.desc||'').trim().toUpperCase().replace(/\s+/g,' '),
     ultimoFinal4(l.cartao)].join('|');
+}
+// chave "frouxa" (sem descrição) — usada para casar um item do banco com um
+// lançamento que o usuário já incluiu manualmente (mesma data/valor/cartão)
+function manualKey(l){
+  return [l.data, Number(l.valor).toFixed(2), ultimoFinal4(l.cartao)].join('|');
 }
 
 function parseFaturaItau(rows){
@@ -1422,34 +1525,67 @@ async function processarFatura(buf, nomeArq){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
   const res=parseFaturaItau(rows);
   if(!res.ok){ showToast(res.msg); return null; }
+
   const have=new Set(lancamentos.map(chaveLanc));
-  const novos=res.itens.filter(it=>!have.has(chaveLanc(it)));
-  const jaTem=res.itens.length-novos.length;
-  if(!novos.length){
+  // índice dos lançamentos existentes pela chave frouxa, para tentar casar (merge)
+  const byManual={};
+  lancamentos.forEach(l=>{ const k=manualKey(l); (byManual[k]=byManual[k]||[]).push(l); });
+
+  const novos=[], merges=[];
+  res.itens.forEach(it=>{
+    if(have.has(chaveLanc(it))) return; // idêntico já existe → ignora (reimportação segura)
+    const descIt=String(it.desc||'').trim().toUpperCase();
+    // casa com um lançamento já incluído pelo usuário: mesma data/valor/cartão, descrição diferente
+    const cand=(byManual[manualKey(it)]||[]).find(m=>{
+      if(m.__merged) return false;
+      const descM=String(m.desc||'').trim().toUpperCase();
+      return descM!==descIt && !descM.includes(descIt);
+    });
+    if(cand){ cand.__merged=true; merges.push({alvo:cand, bank:it}); }
+    else novos.push(it);
+  });
+  const jaTem=res.itens.length-novos.length-merges.length;
+
+  if(!novos.length && !merges.length){
     alert('Fatura '+res.status+' (venc. '+res.venc+') — '+res.itens.length+' lançamentos.\nTodos já estão no painel. Nada a importar.');
-    return {novos:0, ignorados:jaTem};
+    return {novos:0, merges:0, ignorados:jaTem};
   }
   const tot=novos.reduce((s,l)=>s+l.valor,0);
   const okGo=confirm('Fatura '+res.status+' — vencimento '+res.venc+'\n\n'+
     res.itens.length+' lançamentos na fatura\n'+
-    jaTem+' já existem no painel (serão ignorados)\n'+
+    jaTem+' já idênticos no painel (ignorados)\n'+
+    merges.length+' serão MESCLADOS com lançamentos já incluídos (mantém sua descrição + a do banco e as observações)\n'+
     novos.length+' NOVOS serão importados — total '+fmt(tot)+'\n\n'+
-    'Os novos entram com centro de custo "OUTROS" (encargos como "ENCARGOS") para você classificar depois.\n\nImportar agora?');
-  if(!okGo) return null;
-  showToast('Importando '+novos.length+' lançamentos...');
+    'Os novos entram com centro de custo "OUTROS" (encargos como "ENCARGOS") para você classificar depois.\n\nConfirmar?');
+  if(!okGo){ merges.forEach(m=>delete m.alvo.__merged); return null; }
+
+  // 1) mescla nos já existentes (mantém descrição do usuário + ' / ' + banco; mantém obs)
+  let mescladosOk=0;
+  for(const m of merges){
+    const novaDesc=m.alvo.desc+' / '+m.bank.desc;
+    const upd={descricao:novaDesc};
+    if(!m.alvo.cartao || m.alvo.cartao==='Sem cartão') upd.cartao=m.bank.cartao;
+    const {error}=await sb.from('lancamentos').update(upd).eq('id',m.alvo.id);
+    if(!error){ m.alvo.desc=novaDesc; if(upd.cartao) m.alvo.cartao=upd.cartao; mescladosOk++; }
+    delete m.alvo.__merged;
+  }
+  // 2) insere os novos
   const rowsDb=novos.map(l=>({data:l.iso, descricao:l.desc, area:l.area, cc:l.cc, cartao:l.cartao,
     forma:'avista', valor:l.valor, usuario:CU.name, mes:l.mes, status:'ativo',
     obs:'Importado da fatura venc. '+res.venc}));
   const inseridos=[];
-  for(let i=0;i<rowsDb.length;i+=200){
-    const {data:ins,error}=await sb.from('lancamentos').insert(rowsDb.slice(i,i+200)).select();
-    if(error){ showToast('Erro na importação: '+error.message); return null; }
-    inseridos.push(...(ins||[]));
+  if(rowsDb.length){
+    showToast('Importando '+rowsDb.length+' lançamentos...');
+    for(let i=0;i<rowsDb.length;i+=200){
+      const {data:ins,error}=await sb.from('lancamentos').insert(rowsDb.slice(i,i+200)).select();
+      if(error){ showToast('Erro na importação: '+error.message); return null; }
+      inseridos.push(...(ins||[]));
+    }
+    inseridos.map(rowToJs).forEach(r=>lancamentos.unshift(r));
   }
-  inseridos.map(rowToJs).forEach(r=>lancamentos.unshift(r));
   buildMesFilter();renderDash();renderLanc();renderBudget();
-  showToast(novos.length+' lançamentos importados ✓');
-  return {novos:novos.length, ignorados:jaTem};
+  showToast(novos.length+' importados'+(mescladosOk?' · '+mescladosOk+' mesclados':'')+' ✓');
+  return {novos:novos.length, merges:mescladosOk, ignorados:jaTem};
 }
 
 async function importarFatura(inp){
@@ -1527,15 +1663,20 @@ function canEdit(l){
   return !!CU && (CU.profile==='admin' || (CU.areas||[CU.area]).includes(l.area));
 }
 const MESES_ORD=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+function mesAtualNome(){ return MESES_ORD[new Date().getMonth()]; }
 function buildMesFilter(){
   const meses=[...new Set(lancamentos.map(l=>l.mes).filter(Boolean))]
     .sort((a,b)=>MESES_ORD.indexOf(a)-MESES_ORD.indexOf(b));
-  ['f-mes','r-mes'].forEach(id=>{
+  const atual=mesAtualNome();
+  const padrao = meses.includes(atual) ? atual : (meses[meses.length-1]||'');
+  const opts='<option value="">Todos os meses</option>'+
+    meses.map(m=>`<option value="${m}">${m.charAt(0)+m.slice(1).toLowerCase()}</option>`).join('');
+  // f-mes (Lançamentos) e b-mes (Budget) abrem no mês atual; r-mes (Relatórios) em "Todos"
+  [['f-mes',padrao],['b-mes',padrao],['r-mes','']].forEach(([id,def])=>{
     const sel=document.getElementById(id); if(!sel) return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">Todos os meses</option>'+
-      meses.map(m=>`<option value="${m}">${m.charAt(0)+m.slice(1).toLowerCase()}</option>`).join('');
-    if(meses.includes(cur)) sel.value=cur;
+    sel.innerHTML=opts;
+    sel.value = meses.includes(cur) ? cur : def;
   });
 }
 function fmt(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
