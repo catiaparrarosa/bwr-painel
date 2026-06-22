@@ -1551,32 +1551,44 @@ async function parsePdfItau(buf){
   if(!vencM) return {ok:false, msg:'Não encontrei o vencimento no PDF.'};
   const venc=vencM[1]+'/'+vencM[2]+'/'+vencM[3];
   const vencMes=Number(vencM[2]), vencAno=Number(vencM[3]);
+  const DATE=/^(\d{2})\/(\d{2})$/;
   const MESES=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   const mesFatura=MESES[vencMes-1];
-  const cols=[{date:[120,145],desc:[148,290],val:[290,348]},{date:[345,362],desc:[365,500],val:[500,548]}];
-  // início da seção de parcelas futuras (excluir)
-  const cutoffs=pages.map(items=>{ const h=items.filter(i=>/compras parceladas|pr[oó]xim\w* parcel|lan[çc]ament\w* futur/i.test(i.s)); return h.length?Math.max(...h.map(i=>i.y)):-1; });
+  // cabeçalhos da seção FUTURA (parcelas a vencer): excluímos por COLUNA (x) e altura (y),
+  // assim não jogamos fora os lançamentos nacionais/internacionais que ficam ao lado.
+  const futHeaders=pages.map(items=>items.filter(i=>/compras parceladas|pr[oó]xim\w* parcel|lan[çc]ament\w* futur/i.test(i.s)).map(i=>({x:i.x,y:i.y})));
   const itens=[];
   pages.forEach((items,pi)=>{
-    const cut=cutoffs[pi];
-    cols.forEach(col=>{
-      items.filter(i=>/^\d{2}\/\d{2}$/.test(i.s)&&i.x>=col.date[0]&&i.x<col.date[1]).forEach(d=>{
-        const y0=d.y; if(cut>=0&&y0<cut) return;
-        const vals=items.filter(i=>MONEY.test(i.s)&&i.x>=col.val[0]&&i.x<col.val[1]&&Math.abs(i.y-y0)<=3.5);
-        if(!vals.length) return;
-        const val=vals.sort((a,b)=>Math.abs(a.y-y0)-Math.abs(b.y-y0))[0];
-        const dtoks=items.filter(i=>i.x>=col.desc[0]&&i.x<col.desc[1]&&Math.abs(i.y-y0)<=3.5).sort((a,b)=>a.x-b.x);
-        let desc='',prevEnd=null;
-        dtoks.forEach(t=>{ if(prevEnd!=null&&t.x-prevEnd>1.5) desc+=' '; desc+=t.s; prevEnd=t.x+t.w; });
-        desc=desc.replace(/\s+/g,' ').trim();
-        if(!desc||/^pagamento/i.test(desc)) return;
-        const dia=Number(d.s.slice(0,2)), mes=Number(d.s.slice(3,5));
-        const ano=(mes>vencMes)?vencAno-1:vencAno;
-        itens.push({iso:ano+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0'),
-          data:String(dia).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+ano,
-          desc, valor:toNum(val.s), mes:mesFatura,
-          cc:/\b(IOF|JUROS|MULTA|ENCARGO|ANUIDADE|MORA)\b/i.test(desc)?'ENCARGOS':'OUTROS'});
-      });
+    const fut=futHeaders[pi];
+    const naFutura=(x,y)=>fut.some(h=>Math.abs(h.x-x)<130 && h.y>y);
+    // agrupa itens por linha (y) — robusto a variações de posição entre faturas
+    const sorted=items.slice().sort((a,b)=>b.y-a.y || a.x-b.x);
+    const rows=[];
+    sorted.forEach(it=>{ let r=rows.find(r=>Math.abs(r.y-it.y)<=3.5); if(!r){ r={y:it.y,toks:[]}; rows.push(r); } r.toks.push(it); });
+    rows.forEach(row=>{
+      const t=row.toks.sort((a,b)=>a.x-b.x);
+      let i=0;
+      while(i<t.length){
+        const m=DATE.exec(t[i].s);
+        const dia=m?Number(m[1]):0, mes=m?Number(m[2]):0;
+        if(m && dia>=1&&dia<=31 && mes>=1&&mes<=12 && t[i].x<470 && !naFutura(t[i].x,row.y)){
+          i++;
+          const dtoks=[]; let val=null;
+          while(i<t.length){ if(MONEY.test(t[i].s)){ val=t[i]; i++; break; } dtoks.push(t[i]); i++; }
+          if(val){
+            let desc='',prev=null;
+            dtoks.forEach(tk=>{ if(prev!=null && tk.x-prev>1.5) desc+=' '; desc+=tk.s; prev=tk.x+tk.w; });
+            desc=desc.replace(/\s+/g,' ').trim();
+            if(desc && !/^pagamento/i.test(desc)){
+              const ano=(mes>vencMes)?vencAno-1:vencAno;
+              itens.push({iso:ano+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0'),
+                data:String(dia).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+ano,
+                desc, valor:toNum(val.s), mes:mesFatura,
+                cc:/\b(IOF|JUROS|MULTA|ENCARGO|ANUIDADE|MORA)\b/i.test(desc)?'ENCARGOS':'OUTROS'});
+            }
+          }
+        } else i++;
+      }
     });
   });
   if(!itens.length) return {ok:false, msg:'Nenhum lançamento encontrado no PDF.'};
@@ -1596,10 +1608,15 @@ function classificar(res){
     if(have.has(chaveLanc(it))) return; // idêntico já existe → ignora (reimportação segura)
     const descIt=String(it.desc||'').trim().toUpperCase();
     // casa com lançamento já incluído pelo usuário (mesma data/valor/cartão, descrição diferente)
+    const pIt=descIt.match(/(\d{1,2})\/(\d{1,2})\b/); // marcador de parcela (ex.: 10/12)
     const cand=(byManual[manualKey(it)]||[]).find(m=>{
       if(usado.has(m.id)) return false;
       const descM=String(m.desc||'').trim().toUpperCase();
-      return descM!==descIt && !descM.includes(descIt);
+      if(descM===descIt || descM.includes(descIt)) return false;
+      // não mesclar parcelas diferentes do mesmo parcelamento (09/12 vs 10/12)
+      const pM=descM.match(/(\d{1,2})\/(\d{1,2})\b/);
+      if(pM && pIt && pM[0]!==pIt[0]) return false;
+      return true;
     });
     if(cand){ usado.add(cand.id); merges.push({alvo:cand, bank:it}); }
     else novos.push(it);
