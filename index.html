@@ -232,6 +232,7 @@ tbody tr:hover td{background:var(--g50)}
       <input type="text" id="lreq-nome" placeholder="Seu nome completo" style="width:100%;padding:10px;border:1px solid var(--g300);border-radius:8px;margin-bottom:8px;font-family:inherit;box-sizing:border-box">
       <button onclick="enviarPedidoAcesso()" style="width:100%;background:var(--red);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit">Enviar pedido de acesso</button>
     </div>
+    <div id="lver" style="margin-top:16px;text-align:center;font-size:11px;color:var(--g400)"></div>
 
   </div>
 </div>
@@ -336,7 +337,7 @@ tbody tr:hover td{background:var(--g50)}
           <select id="f-cc" onchange="renderLanc()"><option value="">Todos os centros</option></select>
           <select id="f-cartao-lanc" style="display:none" onchange="renderLanc()"><option value="">Todos os cartões</option></select>
           <button class="badd da" onclick="openM()"><i class="fa-solid fa-plus"></i> Novo Lançamento</button>
-          <button class="badd da" id="btn-importar" style="display:none;background:var(--g700)" onclick="document.getElementById('f-fatura').click()"><i class="fa-solid fa-file-excel"></i> Importar fatura</button>
+          <button class="badd" id="btn-importar" style="display:none;background:var(--g700)" onclick="document.getElementById('f-fatura').click()"><i class="fa-solid fa-file-excel"></i> Importar fatura</button>
           <input type="file" id="f-fatura" accept=".xlsx,.xls,.pdf" style="display:none" onchange="importarFatura(this)">
         </div>
         <div class="tw">
@@ -760,7 +761,9 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
+const APP_VERSION = 'v9';
 window.addEventListener('DOMContentLoaded', async ()=>{
+  const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
     sb.auth.onAuthStateChange((event)=>{
       if(event==='PASSWORD_RECOVERY') document.getElementById('recov').style.display='flex';
@@ -1743,13 +1746,23 @@ function csvCell(v){
   return (v.includes(';')||v.includes('"')||v.includes('\n')) ? '"'+v.replace(/"/g,'""')+'"' : v;
 }
 function csvNum(v){ return v.toFixed(2).replace('.',','); }
-function baixarCSV(nome, linhas){
+async function baixarCSV(nome, linhas){
   const csv = String.fromCharCode(0xFEFF)+linhas.map(l=>l.map(csvCell).join(';')).join('\r\n');
-  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  // No celular, usa o menu "Compartilhar" (salvar em Arquivos, enviar por e-mail/WhatsApp)
+  try{
+    const file = new File([blob], nome, {type:'text/csv'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:nome});
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; /* cancelou o compartilhar */ }
+  // No computador (e fallback), baixa direto
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = nome;
+  a.href = url; a.download = nome; a.target = '_blank'; a.rel = 'noopener';
   document.body.appendChild(a); a.click();
-  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},500);
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
 }
 function exportRel(tipo){
   const list = relBase();
@@ -1821,11 +1834,20 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 </script>
 
 <script>
-// PWA: registro do service worker externo para GitHub Pages
+// PWA: registro do service worker + atualização automática
 if ('serviceWorker' in navigator) {
+  var swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (swRefreshing) return;
+    swRefreshing = true;
+    window.location.reload(); // nova versão assumiu → recarrega para aplicar
+  });
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('./service-worker.js')
-      .then(function () { console.log('Service Worker registrado.'); })
+      .then(function (reg) {
+        if (reg.update) reg.update();                 // procura versão nova ao abrir
+        setInterval(function () { reg.update && reg.update(); }, 60 * 60 * 1000);
+      })
       .catch(function (error) { console.log('Service Worker não registrado:', error); });
   });
 }
