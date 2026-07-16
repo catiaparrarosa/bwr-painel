@@ -761,7 +761,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v9';
+const APP_VERSION = 'v10';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -1491,7 +1491,7 @@ function parseFaturaItau(rows){
   const itens=[]; let cartaoAtual=null, emEncargos=false;
   for(const raw of rows){
     const c=cel(raw); const c0=c[0];
-    if(/FINAL\s+\d{4,6}\*+\d{4}/i.test(c0)){
+    if(/-\s*FINAL\s+[\d/*]*\d{4}/i.test(c0)){   // aceita 407505******2532 e 4075/****/****/2532
       const d=ultimoFinal4(c0);
       const nome=c0.replace(/\s*-\s*FINAL.*$/i,'').trim();
       cartaoAtual = CARTAO_CANONICO[d] || (nome+' - FINAL '+d);
@@ -1502,7 +1502,7 @@ function parseFaturaItau(rows){
     if(/^Total de produtos/i.test(c0)){ cartaoAtual=null; emEncargos=false; continue; }
     if(/^Total de lançamentos/i.test(c0)){ cartaoAtual=null; continue; }
     if(!cartaoAtual) continue;
-    const m=c0.match(/^(\d{1,2})\/([A-Za-zçÇ]{3})\.?$/);
+    const m=c0.match(/^(\d{1,2})[\/\-]([A-Za-zçÇ]{3})\.?$/);   // aceita 28/Nov e 28-Nov
     if(!m) continue;
     const nonEmpty=c.filter(Boolean);
     if(nonEmpty.length<3) continue;
@@ -1721,9 +1721,16 @@ async function importarFatura(inp){
       res=await parsePdfItau(buf);
     } else {
       const wb=XLSX.read(buf,{type:'array'});
-      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
-      res=parseFaturaItau(rows);
-      if(res.ok) res.source='xlsx';
+      // lê TODAS as abas (arquivos consolidados têm um mês por aba)
+      const itens=[]; const vencs=[];
+      for(const sn of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:''});
+        const r=parseFaturaItau(rows);
+        if(r.ok){ itens.push(...r.itens); vencs.push(r.venc); }
+      }
+      res = itens.length
+        ? {ok:true, itens, venc: vencs.length>1 ? (vencs[0]+' … '+vencs[vencs.length-1]) : vencs[0], status:'Excel', source:'xlsx'}
+        : {ok:false, msg:'Não encontrei lançamentos na planilha — confira se é a fatura do Itaú'};
     }
     if(!res || !res.ok){ showToast((res&&res.msg)||'Não consegui ler a fatura'); return; }
     abrirPreviewImport(res);
