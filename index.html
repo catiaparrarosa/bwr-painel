@@ -352,7 +352,7 @@ tbody tr:hover td{background:var(--g50)}
         <div class="ptit">Relatórios</div>
         <div class="psub">Exporte relatórios detalhados para Excel</div>
         <div class="fb" style="margin-bottom:20px">
-          <select id="r-mes"><option value="">Todos os meses</option><option value="MAIO">Maio 2026</option><option value="JUNHO">Junho 2026</option></select>
+          <select id="r-mes"><option value="">Todos os meses</option></select>
           <select id="r-area"><option value="">Todas as áreas</option></select>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
@@ -957,15 +957,15 @@ async function saveL(){
 function renderDash(){
   const myL = getMyLanc();
   const mes = document.getElementById('f-mes')?.value || '';
-  const filtered = myL.filter(l=>!mes||l.mes===mes);
+  const filtered = myL.filter(l=>!mes||ymDe(l)===mes);
   const total = filtered.reduce((s,l)=>s+(l.valor>0?l.valor:0),0);
-  
+
   // Budget saldo
   let limTotal=0, gastoTotal=0;
   const areasToShow = CU.profile==='supervisor' ? [CU.area] : Object.keys(BUDGETS);
   areasToShow.forEach(a=>{
     if(BUDGETS[a]){limTotal+=BUDGETS[a].lim;}
-    gastoTotal+=filtered.filter(l=>l.area===a&&l.valor>0).reduce((s,l)=>s+l.valor,0);
+    gastoTotal+=filtered.filter(l=>areaMatch(l,a)&&l.valor>0).reduce((s,l)=>s+l.valor,0);
   });
   const saldo=limTotal-gastoTotal;
 
@@ -978,13 +978,13 @@ function renderDash(){
   document.getElementById('c-total').textContent=fmt(total);
   document.getElementById('c-total-s').textContent=filtered.filter(l=>l.valor>0).length+' lançamentos';
   document.getElementById('c-fatura').textContent=fmt(total);
-  document.getElementById('c-fatura-s').textContent=mes||'todos os meses';
+  document.getElementById('c-fatura-s').textContent=mes?labelYM(mes):'todos os meses';
   document.getElementById('c-maior').textContent=maiorCC[0];
   document.getElementById('c-maior-v').textContent=maiorCC[0]!=='—'?fmt(maiorCC[1]):'';
   document.getElementById('c-saldo').textContent=fmt(Math.abs(saldo));
   document.getElementById('c-saldo').className='cval '+(saldo>=0?'grn':'red');
   document.getElementById('c-saldo-s').textContent=saldo>=0?'disponível':'acima do limite';
-  document.getElementById('dsub').textContent=(mes||'Todos os meses')+' · '+(CU.profile==='supervisor'?CU.area:'Visão consolidada');
+  document.getElementById('dsub').textContent=(mes?labelYM(mes):'Todos os meses')+' · '+(CU.profile==='supervisor'?CU.area:'Visão consolidada');
 
   // Budget cards
   const bw=document.getElementById('budget-cards-w');
@@ -993,7 +993,7 @@ function renderDash(){
     const gc=document.createElement('div');gc.className='cg';gc.style.cssText='grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:20px';
     areasToShow.forEach(area=>{
       if(!BUDGETS[area])return;
-      const gasto=filtered.filter(l=>l.area===area&&l.valor>0).reduce((s,l)=>s+l.valor,0);
+      const gasto=filtered.filter(l=>areaMatch(l,area)&&l.valor>0).reduce((s,l)=>s+l.valor,0);
       const lim=BUDGETS[area].lim;
       const pct=Math.min(100,Math.round(gasto/lim*100));
       const sld=lim-gasto;
@@ -1082,7 +1082,7 @@ function filtrarCartaoRose(finalDigits, label){
     // Filtrar na lista
     const mes = document.getElementById('f-mes').value;
     let list = lancamentos.filter(l=>l.valor>0 && l.cartao?.includes(finalDigits));
-    if(mes) list = list.filter(l=>l.mes===mes);
+    if(mes) list = list.filter(l=>ymDe(l)===mes);
     document.getElementById('lt').innerHTML = list.map(l=>`<tr>
       <td>${l.data}</td><td>${l.desc}</td><td>${l.area}</td>
       <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.cc}">${l.cc}</td>
@@ -1109,8 +1109,8 @@ function buildAreaFilter(){
       sel.value=CU.area;sel.disabled=true;
     }
   } else {
-    const areas=[...new Set(lancamentos.map(l=>l.area))].sort();
-    sel.innerHTML='<option value="">Todas as áreas</option>'+areas.map(a=>`<option>${a}</option>`).join('');
+    const areas=[...new Set(lancamentos.map(l=>areaNorm(l.area)).filter(Boolean))].sort();
+    sel.innerHTML='<option value="">Todas as áreas</option>'+areas.map(a=>`<option value="${a}">${a}</option>`).join('');
     sel.disabled=false;
   }
 
@@ -1141,8 +1141,8 @@ function renderLanc(){
   const area=document.getElementById('f-area').value;
   const cc=document.getElementById('f-cc').value;
   const cartaoFiltro=document.getElementById('f-cartao-lanc')?.value||'';
-  if(mes) list=list.filter(l=>l.mes===mes);
-  if(area) list=list.filter(l=>l.area===area);
+  if(mes) list=list.filter(l=>ymDe(l)===mes);
+  if(area) list=list.filter(l=>areaMatch(l,area));
   if(cc) list=list.filter(l=>l.cc===cc);
   if(cartaoFiltro) list=list.filter(l=>ultimoFinal4(l.cartao)===cartaoFiltro);
   list=list.filter(l=>l.valor>0);
@@ -1154,12 +1154,12 @@ function renderLanc(){
     <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.cc}">${l.cc}</td>
     <td style="font-size:11px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.cartao}">${l.cartao?.split(' - FINAL')[0]||'—'}</td>
     <td class="tv neg">${fmt(l.valor)}</td>
-    <td><span class="badge bgr">${l.mes}</span></td>
+    <td><span class="badge bgr">${labelYM(ymDe(l))}</span></td>
     <td>${canEdit(l)?`<button onclick="openEditM(${l.id})" style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--primary);font-size:13px" title="Editar lançamento"><i class="fa-solid fa-pen-to-square"></i></button>`:''}${l.comp?`<button onclick="verComp(${l.id})" style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--g500);font-size:13px" title="Ver comprovante"><i class="fa-solid fa-paperclip"></i></button>`:''}</td>
   </tr>`).join('');
   document.getElementById('lm').innerHTML=list.map(l=>`<div class="mc">
     <div class="mct"><span class="mcd">${l.desc}</span><span class="mcv">${fmt(l.valor)}</span></div>
-    <div class="mcr"><span class="badge bgr">${l.area}</span><span class="mci">${l.data}</span><span class="mci">${l.mes}</span></div>
+    <div class="mcr"><span class="badge bgr">${l.area}</span><span class="mci">${l.data}</span><span class="mci">${labelYM(ymDe(l))}</span></div>
     <div class="mcr" style="margin-top:3px"><span class="mci" style="font-size:11px">${l.cc}</span></div>
     <div class="mcr" style="margin-top:4px">${canEdit(l)?`<button onclick="openEditM(${l.id})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--primary);background:transparent;color:var(--primary);cursor:pointer;font-family:'DM Sans',sans-serif"><i class="fa-solid fa-pen-to-square"></i> Editar</button>`:''}${l.comp?`<button onclick="verComp(${l.id})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--g300);background:transparent;color:var(--g500);cursor:pointer;font-family:'DM Sans',sans-serif"><i class="fa-solid fa-paperclip"></i> Comprovante</button>`:''}</div>
   </div>`).join('');
@@ -1297,11 +1297,11 @@ function renderBudget(){
   const editBtn=document.getElementById('btn-edit-budget');
   if(editBtn) editBtn.style.display=(CU&&CU.profile==='admin')?'inline-flex':'none';
   const sub=document.querySelector('#page-budget .psub');
-  if(sub) sub.textContent='Controle de limites por área'+(mes?(' · '+mes.charAt(0)+mes.slice(1).toLowerCase()):' · todos os meses');
+  if(sub) sub.textContent='Controle de limites por área'+(mes?(' · '+labelYM(mes)):' · todos os meses');
 
   const dados=Object.entries(BUDGETS).map(([area,b])=>{
     const u=AREA_RESP[area];
-    const gasto=lancamentos.filter(l=>l.area===area&&(!mes||l.mes===mes)&&l.valor>0).reduce((s,l)=>s+l.valor,0);
+    const gasto=lancamentos.filter(l=>areaMatch(l,area)&&(!mes||ymDe(l)===mes)&&l.valor>0).reduce((s,l)=>s+l.valor,0);
     const saldo=b.lim-gasto;
     const pct=Math.min(100,Math.round(gasto/b.lim*100));
     const cor=pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
@@ -1647,7 +1647,7 @@ async function aplicarImport(plan, res){
     }
     inseridos.map(rowToJs).forEach(r=>lancamentos.unshift(r));
   }
-  buildMesFilter();renderDash();renderLanc();renderBudget();
+  buildMesFilter();buildAreaFilter();renderDash();renderLanc();renderBudget();
   showToast(plan.novos.length+' importados'+(mescladosOk?' · '+mescladosOk+' mesclados':'')+' ✓');
   return {novos:plan.novos.length, merges:mescladosOk, ignorados:plan.jaTem};
 }
@@ -1734,8 +1734,8 @@ function relBase(){
   let list = getMyLanc().filter(l=>l.valor>0);
   const mes = document.getElementById('r-mes').value;
   const area = document.getElementById('r-area').value;
-  if(mes) list = list.filter(l=>l.mes===mes);
-  if(area) list = list.filter(l=>l.area===area);
+  if(mes) list = list.filter(l=>ymDe(l)===mes);
+  if(area) list = list.filter(l=>areaMatch(l,area));
   return list;
 }
 function csvCell(v){
@@ -1791,20 +1791,29 @@ function canEdit(l){
   return !!CU && (CU.profile==='admin' || (CU.areas||[CU.area]).includes(l.area));
 }
 const MESES_ORD=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
-function mesAtualNome(){ return MESES_ORD[new Date().getMonth()]; }
+// ── FILTRO POR DATA DA COMPRA (mês/ano da data, não da fatura) ──
+function ymDe(l){ const p=String(l&&l.data||'').split('/'); return p.length===3 ? p[2]+'-'+String(p[1]).padStart(2,'0') : ''; }
+function labelYM(ym){ if(!ym) return ''; const [a,m]=String(ym).split('-'); const nome=MESES_ORD[Number(m)-1]||m; return nome.charAt(0)+nome.slice(1).toLowerCase()+'/'+a; }
+function ymAtual(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+// ── ÁREAS (agrupa Emissão + Pós-vendas em uma só) ──
+function areaNorm(a){ return (a==='Emissão'||a==='Pós-vendas') ? 'Emissão / Pós-vendas' : a; }
+function areaMatch(l, area){
+  if(!area) return true;
+  if(area==='Emissão / Pós-vendas') return l.area==='Emissão'||l.area==='Pós-vendas'||l.area==='Emissão / Pós-vendas';
+  return l.area===area;
+}
 function buildMesFilter(){
-  const meses=[...new Set(lancamentos.map(l=>l.mes).filter(Boolean))]
-    .sort((a,b)=>MESES_ORD.indexOf(a)-MESES_ORD.indexOf(b));
-  const atual=mesAtualNome();
-  const padrao = meses.includes(atual) ? atual : (meses[meses.length-1]||'');
-  const opts='<option value="">Todos os meses</option>'+
-    meses.map(m=>`<option value="${m}">${m.charAt(0)+m.slice(1).toLowerCase()}</option>`).join('');
+  // opções = meses/anos presentes nas DATAS das compras, mais recentes primeiro
+  const yms=[...new Set(lancamentos.map(ymDe).filter(Boolean))].sort().reverse();
+  const atual=ymAtual();
+  const padrao = yms.includes(atual) ? atual : (yms[0]||'');
+  const opts='<option value="">Todos os meses</option>'+yms.map(ym=>`<option value="${ym}">${labelYM(ym)}</option>`).join('');
   // f-mes (Lançamentos) e b-mes (Budget) abrem no mês atual; r-mes (Relatórios) em "Todos"
   [['f-mes',padrao],['b-mes',padrao],['r-mes','']].forEach(([id,def])=>{
     const sel=document.getElementById(id); if(!sel) return;
     const cur=sel.value;
     sel.innerHTML=opts;
-    sel.value = meses.includes(cur) ? cur : def;
+    sel.value = yms.includes(cur) ? cur : def;
   });
 }
 function fmt(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
