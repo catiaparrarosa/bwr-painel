@@ -646,11 +646,27 @@ function rowToJs(r){
     mes:r.mes||'', status:r.status||'ativo', obs:r.obs||'', comp:r.comp||null};
 }
 
+// Busca TODAS as linhas de uma tabela, em blocos de 1000 (o servidor limita cada resposta a 1000)
+async function fetchTudo(tabela){
+  const all=[];
+  for(let from=0;;from+=1000){
+    const {data,error} = await sb.from(tabela).select('*').order('id',{ascending:true}).range(from, from+999);
+    if(error) throw error;
+    all.push(...(data||[]));
+    if(!data || data.length<1000) break;
+  }
+  return all;
+}
 async function loadLancamentos(){
-  const {data,error} = await sb.from('lancamentos').select('*')
-    .order('data',{ascending:false}).order('id',{ascending:false}).limit(10000);
-  if(error){ showToast('Erro ao carregar dados: '+error.message); return; }
-  lancamentos = (data||[]).map(rowToJs);
+  try{
+    const data = await fetchTudo('lancamentos');
+    lancamentos = data.map(rowToJs);
+    // mais recentes primeiro (por data da compra; empate: id maior primeiro)
+    lancamentos.sort((a,b)=>{
+      const ka=brToISO(a.data||'01/01/1900'), kb=brToISO(b.data||'01/01/1900');
+      return ka<kb ? 1 : ka>kb ? -1 : (b.id-a.id);
+    });
+  }catch(e){ showToast('Erro ao carregar dados: '+e.message); }
 }
 
 function dataURLtoBlob(d){
@@ -774,7 +790,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v11';
+const APP_VERSION = 'v12';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -1799,14 +1815,15 @@ function hojeArq(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getM
 async function backupCompleto(){
   if(!CU || CU.profile!=='admin'){ showToast('Somente o Financeiro pode gerar o backup'); return; }
   showToast('Gerando backup do banco...');
-  const [rL, rE, rC, rR] = await Promise.all([
-    sb.from('lancamentos').select('*').order('id').limit(50000),
+  let lanc;
+  try{ lanc = await fetchTudo('lancamentos'); }   // paginado: pega TODAS as linhas
+  catch(e){ showToast('Erro ao ler lançamentos: '+e.message); return; }
+  const [rE, rC, rR] = await Promise.all([
     sb.from('allowed_emails').select('*'),
     sb.from('app_config').select('*'),
     sb.from('access_requests').select('*')
   ]);
-  if(rL.error){ showToast('Erro ao ler lançamentos: '+rL.error.message); return; }
-  const lanc=rL.data||[], emails=rE.data||[], cfgs=rC.data||[], reqs=rR.data||[];
+  const emails=rE.data||[], cfgs=rC.data||[], reqs=rR.data||[];
 
   let s='';
   s+='-- ════════════════════════════════════════════════════════════════\n';
