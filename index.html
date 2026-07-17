@@ -790,7 +790,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v12';
+const APP_VERSION = 'v13';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -1324,7 +1324,7 @@ const AREA_RESP = {
   'Alpha':                {nome:'Lucas',    cartao:'1713'},
   'Lençóis':              {nome:'Sarah',    cartao:'2532'},
   'Serv. Gerais':         {nome:'Marleide', cartao:'9025'},
-  'Apprenti':             {nome:'Karen',    cartao:'7241'}
+  'Apprenti':             {nome:'Karen',    cartao:'1526'}
 };
 function renderBudget(){
   const mes=document.getElementById('b-mes')?.value || '';
@@ -1472,6 +1472,7 @@ const CARTAO_CANONICO = {
   '2532':'SARAH DE ANGELIS DA SILVA - FINAL 2532',
   '9025':'MARLEIDE LEITE DA SILVA - FINAL 9025',
   '7241':'LINDOMAR ALVES - FINAL 7241',
+  '1526':'KAREN PORTO PEDROSO - FINAL 1526',
   '0842':'ROSILENE CUNHA PORTO PEDROSO - FINAL 0842 (venc.20)',
   '9142':'ROSILENE CUNHA PORTO PEDROSO - FINAL 9142 (venc.26)'
 };
@@ -1480,7 +1481,7 @@ const CARTAO_AREA = {
   '0842':'Diretoria','9142':'Diretoria',
   '3092':'Matriz','1419':'Matriz',
   '0386':'Emissão / Pós-vendas','1713':'Alpha','2532':'Lençóis',
-  '9025':'Serv. Gerais','7241':'Apprenti'
+  '9025':'Serv. Gerais','7241':'Apprenti','1526':'Apprenti'
 };
 const MES_ABREV = {jan:1,feb:2,fev:2,mar:3,apr:4,abr:4,may:5,mai:5,jun:6,jul:7,
   aug:8,ago:8,sep:9,set:9,oct:10,out:10,nov:11,dec:12,dez:12};
