@@ -556,7 +556,6 @@ const BUDGETS_DEFAULT = {
   'Emissão / Pós-vendas': {lim:5000},
   'Matriz':     {lim:10000},
   'Alpha':      {lim:5000},
-  'Lençóis':   {lim:5000},
   'Serv. Gerais':{lim:5000},
   'Apprenti':   {lim:5000}
 };
@@ -779,7 +778,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v15';
+const APP_VERSION = 'v16';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -1310,7 +1309,6 @@ const AREA_RESP = {
   'Emissão / Pós-vendas': {nome:'Júlia',    cartao:'0386'},
   'Matriz':               {nome:'Bruna',    cartao:'3092'},
   'Alpha':                {nome:'Lucas',    cartao:'1713'},
-  'Lençóis':              {nome:'—',        cartao:'—'},
   'Serv. Gerais':         {nome:'Marleide', cartao:'9025'},
   'Apprenti':             {nome:'Karen',    cartao:'1526'}
 };
@@ -1410,7 +1408,7 @@ async function renderUsuarios(){
 }
 
 async function aprovarPedido(id,email,nome){
-  const area = prompt('Qual área/departamento para '+(nome||email)+'?\n(ex.: Matriz, Alpha, Lençóis, Apprenti...)','Matriz');
+  const area = prompt('Qual área/departamento para '+(nome||email)+'?\n(ex.: Matriz, Alpha, Apprenti...)','Matriz');
   if(!area) return;
   const initials = (nome||email).trim().split(/\s+/).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'US';
   const {error} = await sb.from('allowed_emails').insert({email, name:nome||email, area:area.trim(), role:'supervisor', initials, cartoes:[]});
@@ -1436,7 +1434,6 @@ const CARTAO_CANONICO = {
   '1419':'BRUNA PORTO PEDROSO - FINAL 1419',
   '0386':'JULIA MENEZES SOBRAL - FINAL 0386',
   '1713':'LUCAS FERNANDO NOGUEIRA - FINAL 1713',
-  '2532':'SARAH DE ANGELIS DA SILVA - FINAL 2532',
   '9025':'MARLEIDE LEITE DA SILVA - FINAL 9025',
   '7241':'LINDOMAR ALVES - FINAL 7241',
   '1526':'KAREN PORTO PEDROSO - FINAL 1526',
@@ -1447,7 +1444,7 @@ const CARTAO_AREA = {
   '1703':'Diretoria','9515':'Diretoria','9004':'Diretoria','4162':'Diretoria',
   '0842':'Diretoria','9142':'Diretoria',
   '3092':'Matriz','1419':'Matriz',
-  '0386':'Emissão / Pós-vendas','1713':'Alpha','2532':'Lençóis',
+  '0386':'Emissão / Pós-vendas','1713':'Alpha',
   '9025':'Serv. Gerais','7241':'Apprenti','1526':'Apprenti'
 };
 const MES_ABREV = {jan:1,feb:2,fev:2,mar:3,apr:4,abr:4,may:5,mai:5,jun:6,jul:7,
