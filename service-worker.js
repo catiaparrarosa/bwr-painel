@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bwr-painel-gastos-v13';
+const CACHE_NAME = 'bwr-painel-gastos-v14';
 const APP_SHELL = [
   './',
   './index.html',
