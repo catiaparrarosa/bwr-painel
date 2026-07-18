@@ -351,10 +351,14 @@ tbody tr:hover td{background:var(--g50)}
       <div id="page-relatorios" class="page">
         <div class="ptit">Relatórios</div>
         <div class="psub">Exporte relatórios detalhados para Excel</div>
-        <div class="fb" style="margin-bottom:20px">
-          <select id="r-mes"><option value="">Todos os meses</option></select>
-          <select id="r-area"><option value="">Todas as áreas</option></select>
+        <div class="fb" style="margin-bottom:6px">
+          <select id="r-mes" onchange="atualizarResumoRel()"><option value="">Todos os meses</option></select>
+          <select id="r-area" onchange="atualizarResumoRel()"><option value="">Todas as áreas</option></select>
+          <select id="r-cc" onchange="atualizarResumoRel()"><option value="">Todos os centros</option></select>
+          <select id="r-cartao" onchange="atualizarResumoRel()" style="display:none"><option value="">Todos os cartões</option></select>
+          <select id="r-user" onchange="atualizarResumoRel()"><option value="">Todos os responsáveis</option></select>
         </div>
+        <div id="r-resumo" style="font-size:12px;color:var(--g500);margin-bottom:16px"></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
           <div class="card" onclick="exportRel('base')" style="cursor:pointer">
             <div class="cico g"><i class="fa-solid fa-table"></i></div>
@@ -779,7 +783,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -834,17 +838,9 @@ function startApp(){
   document.getElementById('sb-budget').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('mn-budget').style.display = isAdmin ? 'flex' : 'none';
 
-  // Relatórios area filter
-  const ra=document.getElementById('r-area');
-  ra.innerHTML='<option value="">Todas as áreas</option>';
-  const areasAvail = isSup
-    ? (CU.areas||[CU.area]).filter(a=>a!=='Emissão / Pós-vendas')
-    : Object.keys(BUDGETS);
-  areasAvail.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ra.appendChild(o);});
-  if(isSup && areasAvail.length===1){ra.value=areasAvail[0];ra.disabled=true;}
-
   buildMesFilter();
   buildAreaFilter();
+  buildRelFilters();
   renderDash();
   renderLanc();
   renderBudget();
@@ -1654,7 +1650,7 @@ async function aplicarImport(plan, res){
     }
     inseridos.map(rowToJs).forEach(r=>lancamentos.unshift(r));
   }
-  buildMesFilter();buildAreaFilter();renderDash();renderLanc();renderBudget();
+  buildMesFilter();buildAreaFilter();buildRelFilters();renderDash();renderLanc();renderBudget();
   showToast(plan.novos.length+' importados'+(mescladosOk?' · '+mescladosOk+' mesclados':'')+' ✓');
   return {novos:plan.novos.length, merges:mescladosOk, ignorados:plan.jaTem};
 }
@@ -1748,9 +1744,68 @@ function relBase(){
   let list = getMyLanc().filter(l=>l.valor>0);
   const mes = document.getElementById('r-mes').value;
   const area = document.getElementById('r-area').value;
+  const cc = document.getElementById('r-cc')?.value || '';
+  const cartao = document.getElementById('r-cartao')?.value || '';
+  const usuario = document.getElementById('r-user')?.value || '';
   if(mes) list = list.filter(l=>ymDe(l)===mes);
   if(area) list = list.filter(l=>areaMatch(l,area));
+  if(cc) list = list.filter(l=>l.cc===cc);
+  if(cartao) list = list.filter(l=>ultimoFinal4(l.cartao)===cartao);
+  if(usuario) list = list.filter(l=>l.user===usuario);
   return list;
+}
+
+// Monta as opções dos filtros de Relatórios a partir dos dados reais
+function buildRelFilters(){
+  if(!CU) return;
+  const isSup = CU.profile==='supervisor';
+
+  const ra=document.getElementById('r-area');
+  if(ra){
+    const areas = isSup
+      ? (CU.areas||[CU.area]).filter(a=>a!=='Emissão / Pós-vendas')
+      : [...new Set(getMyLanc().map(l=>areaNorm(l.area)).filter(Boolean))].sort();
+    const cur=ra.value;
+    ra.innerHTML='<option value="">Todas as áreas</option>'+areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+    if(areas.includes(cur)) ra.value=cur;
+    if(isSup && areas.length===1){ ra.value=areas[0]; ra.disabled=true; }
+  }
+  const rcc=document.getElementById('r-cc');
+  if(rcc){
+    const ccs=[...new Set(getMyLanc().map(l=>l.cc).filter(Boolean))].sort();
+    const cur=rcc.value;
+    rcc.innerHTML='<option value="">Todos os centros</option>'+ccs.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(ccs.includes(cur)) rcc.value=cur;
+  }
+  const rca=document.getElementById('r-cartao');
+  if(rca){
+    if(CU.profile==='admin'||CU.profile==='diretoria'){
+      const mapc={};
+      getMyLanc().forEach(l=>{ const f=ultimoFinal4(l.cartao); if(f && !CARTOES_OCULTOS.includes(f)) mapc[f]=l.cartao; });
+      const cur=rca.value;
+      rca.innerHTML='<option value="">Todos os cartões</option>'+Object.entries(mapc)
+        .sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))
+        .map(([f,n])=>`<option value="${f}">${(n.split(' - FINAL')[0]||n)} · final ${f}</option>`).join('');
+      if(mapc[cur]) rca.value=cur;
+      rca.style.display='';
+    } else { rca.style.display='none'; rca.value=''; }
+  }
+  const ru=document.getElementById('r-user');
+  if(ru){
+    const us=[...new Set(getMyLanc().map(l=>l.user).filter(Boolean))].sort();
+    const cur=ru.value;
+    ru.innerHTML='<option value="">Todos os responsáveis</option>'+us.map(u=>`<option value="${u}">${u}</option>`).join('');
+    if(us.includes(cur)) ru.value=cur;
+  }
+  atualizarResumoRel();
+}
+
+// Resumo ao vivo do que a seleção atual vai exportar
+function atualizarResumoRel(){
+  const el=document.getElementById('r-resumo');
+  if(!el || !CU) return;
+  const list=relBase();
+  el.textContent = 'Seleção atual: '+list.length+' lançamentos · total '+fmt(list.reduce((s,l)=>s+l.valor,0));
 }
 function csvCell(v){
   v = (v===null||v===undefined) ? '' : String(v);
@@ -1891,7 +1946,9 @@ function exportRel(tipo){
     });
     nome = 'BWR_Parcelas_Futuras';
   } else { return; }
-  baixarCSV(nome+'_'+mes+'.csv', linhas);
+  const areaSel = document.getElementById('r-area')?.value || '';
+  const sufixoArea = areaSel ? '_'+areaSel.replace(/[^\wÀ-ú]+/g,'-') : '';
+  baixarCSV(nome+'_'+mes+sufixoArea+'.csv', linhas);
   showToast('Relatório exportado ✓ (abra no Excel)');
 }
 
