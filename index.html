@@ -553,7 +553,8 @@ const LOGO = 'data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAFfCAYAAAC2m6h
 
 const BUDGETS_DEFAULT = {
   'Diretoria':  {lim:100000},
-  'Emissão / Pós-vendas': {lim:5000},
+  'Emissão':   {lim:5000},
+  'Pós-vendas':{lim:5000},
   'Matriz':     {lim:10000},
   'Alpha':      {lim:5000},
   'Serv. Gerais':{lim:5000},
@@ -778,7 +779,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v17';
+const APP_VERSION = 'v18';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -836,9 +837,11 @@ function startApp(){
   // Relatórios area filter
   const ra=document.getElementById('r-area');
   ra.innerHTML='<option value="">Todas as áreas</option>';
-  const areasAvail = isSup ? [CU.area] : Object.keys(BUDGETS);
+  const areasAvail = isSup
+    ? (CU.areas||[CU.area]).filter(a=>a!=='Emissão / Pós-vendas')
+    : Object.keys(BUDGETS);
   areasAvail.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ra.appendChild(o);});
-  if(isSup){ra.value=CU.area;ra.disabled=true;}
+  if(isSup && areasAvail.length===1){ra.value=areasAvail[0];ra.disabled=true;}
 
   buildMesFilter();
   buildAreaFilter();
@@ -983,7 +986,9 @@ function renderDash(){
 
   // Budget saldo
   let limTotal=0, gastoTotal=0;
-  const areasToShow = CU.profile==='supervisor' ? [CU.area] : Object.keys(BUDGETS);
+  const areasToShow = CU.profile==='supervisor'
+    ? (CU.areas||[CU.area]).filter(a=>BUDGETS[a])
+    : Object.keys(BUDGETS);
   areasToShow.forEach(a=>{
     if(BUDGETS[a]){limTotal+=BUDGETS[a].lim;}
     gastoTotal+=filtered.filter(l=>areaMatch(l,a)&&l.valor>0).reduce((s,l)=>s+l.valor,0);
@@ -1010,7 +1015,7 @@ function renderDash(){
   // Budget cards
   const bw=document.getElementById('budget-cards-w');
   bw.innerHTML='';
-  if(Object.keys(BUDGETS).includes(CU.area)||CU.profile!=='supervisor'){
+  if(areasToShow.length>0){
     const gc=document.createElement('div');gc.className='cg';gc.style.cssText='grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:20px';
     areasToShow.forEach(area=>{
       if(!BUDGETS[area])return;
@@ -1306,7 +1311,8 @@ function cruzarLancamentos(){
 const AREA_RESP = {
   'Financeiro':           {nome:'Catia',    cartao:'—'},
   'Diretoria':            {nome:'Rose',     cartao:'0842'},
-  'Emissão / Pós-vendas': {nome:'Júlia',    cartao:'0386'},
+  'Emissão':              {nome:'Júlia',    cartao:'0386'},
+  'Pós-vendas':           {nome:'Júlia',    cartao:'0386'},
   'Matriz':               {nome:'Bruna',    cartao:'3092'},
   'Alpha':                {nome:'Lucas',    cartao:'1713'},
   'Serv. Gerais':         {nome:'Marleide', cartao:'9025'},
@@ -1443,7 +1449,7 @@ const CARTAO_AREA = {
   '1703':'Diretoria','9515':'Diretoria','9004':'Diretoria','4162':'Diretoria',
   '0842':'Diretoria','9142':'Diretoria',
   '3092':'Matriz','1419':'Matriz',
-  '0386':'Emissão / Pós-vendas','1713':'Alpha',
+  '0386':'Emissão','1713':'Alpha',
   '9025':'Serv. Gerais','7241':'Apprenti','1526':'Apprenti'
 };
 // Cartões desativados (Lindomar 7241, Sarah 2532): saem das listas de escolha,
@@ -1899,10 +1905,14 @@ function ymDe(l){ const p=String(l&&l.data||'').split('/'); return p.length===3 
 function labelYM(ym){ if(!ym) return ''; const [a,m]=String(ym).split('-'); const nome=MESES_ORD[Number(m)-1]||m; return nome.charAt(0)+nome.slice(1).toLowerCase()+'/'+a; }
 function ymAtual(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 // ── ÁREAS (agrupa Emissão + Pós-vendas em uma só) ──
-function areaNorm(a){ return (a==='Emissão'||a==='Pós-vendas') ? 'Emissão / Pós-vendas' : a; }
+// Áreas Emissão e Pós-vendas agora são SEPARADAS.
+// Lançamentos antigos gravados como "Emissão / Pós-vendas" contam em Emissão
+// (podem ser reclassificados um a um pelo botão Editar).
+function areaNorm(a){ return a==='Emissão / Pós-vendas' ? 'Emissão' : a; }
 function areaMatch(l, area){
   if(!area) return true;
   if(area==='Emissão / Pós-vendas') return l.area==='Emissão'||l.area==='Pós-vendas'||l.area==='Emissão / Pós-vendas';
+  if(area==='Emissão') return l.area==='Emissão'||l.area==='Emissão / Pós-vendas';
   return l.area===area;
 }
 function buildMesFilter(){
