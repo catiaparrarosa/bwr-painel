@@ -778,7 +778,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v16';
+const APP_VERSION = 'v17';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -1139,7 +1139,7 @@ function buildAreaFilter(){
   const selCartao=document.getElementById('f-cartao-lanc');
   if(CU.profile==='admin'||CU.profile==='diretoria'){
     const mapc={};
-    getMyLanc().forEach(l=>{ const f=ultimoFinal4(l.cartao); if(f) mapc[f]=l.cartao; });
+    getMyLanc().forEach(l=>{ const f=ultimoFinal4(l.cartao); if(f && !CARTOES_OCULTOS.includes(f)) mapc[f]=l.cartao; });
     const opts=Object.entries(mapc)
       .sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))
       .map(([f,nome])=>`<option value="${f}">${(nome.split(' - FINAL')[0]||nome)} · final ${f}</option>`)
@@ -1435,7 +1435,6 @@ const CARTAO_CANONICO = {
   '0386':'JULIA MENEZES SOBRAL - FINAL 0386',
   '1713':'LUCAS FERNANDO NOGUEIRA - FINAL 1713',
   '9025':'MARLEIDE LEITE DA SILVA - FINAL 9025',
-  '7241':'LINDOMAR ALVES - FINAL 7241',
   '1526':'KAREN PORTO PEDROSO - FINAL 1526',
   '0842':'ROSILENE CUNHA PORTO PEDROSO - FINAL 0842 (venc.20)',
   '9142':'ROSILENE CUNHA PORTO PEDROSO - FINAL 9142 (venc.26)'
@@ -1447,6 +1446,9 @@ const CARTAO_AREA = {
   '0386':'Emissão / Pós-vendas','1713':'Alpha',
   '9025':'Serv. Gerais','7241':'Apprenti','1526':'Apprenti'
 };
+// Cartões desativados (Lindomar 7241, Sarah 2532): saem das listas de escolha,
+// mas os lançamentos antigos deles são preservados
+const CARTOES_OCULTOS = ['7241','2532'];
 const MES_ABREV = {jan:1,feb:2,fev:2,mar:3,apr:4,abr:4,may:5,mai:5,jun:6,jul:7,
   aug:8,ago:8,sep:9,set:9,oct:10,out:10,nov:11,dec:12,dez:12};
 
