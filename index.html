@@ -277,6 +277,9 @@ tbody tr:hover td{background:var(--g50)}
         <div id="sb-budget" style="display:none">
           <button class="ni" data-pg="budget" onclick="nav('budget')"><i class="fa-solid fa-wallet"></i> Budget</button>
         </div>
+        <div id="sb-backup" style="display:none">
+          <button class="ni" data-pg="backup" onclick="nav('backup')"><i class="fa-solid fa-database"></i> Backup</button>
+        </div>
         <div id="sb-admin" style="display:none">
           <div class="sdiv"></div>
           <div class="ssec">Administração</div>
@@ -350,7 +353,7 @@ tbody tr:hover td{background:var(--g50)}
       <!-- RELATÓRIOS -->
       <div id="page-relatorios" class="page">
         <div class="ptit">Relatórios</div>
-        <div class="psub">Exporte relatórios detalhados para Excel</div>
+        <div class="psub">Selecione os filtros, confira os dados na tela e baixe em Excel</div>
         <div class="fb" style="margin-bottom:6px">
           <select id="r-mes" onchange="atualizarResumoRel()"><option value="">Todos os meses</option></select>
           <select id="r-area" onchange="atualizarResumoRel()"><option value="">Todas as áreas</option></select>
@@ -358,14 +361,18 @@ tbody tr:hover td{background:var(--g50)}
           <select id="r-cartao" onchange="atualizarResumoRel()" style="display:none"><option value="">Todos os cartões</option></select>
           <select id="r-user" onchange="atualizarResumoRel()"><option value="">Todos os responsáveis</option></select>
         </div>
-        <div id="r-resumo" style="font-size:12px;color:var(--g500);margin-bottom:16px"></div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+          <div id="r-resumo" style="font-size:12px;color:var(--g500)"></div>
+          <button class="badd" onclick="exportRel('base')" style="background:var(--red)"><i class="fa-solid fa-download"></i> Baixar Excel (seleção)</button>
+        </div>
+        <div class="tw" style="margin-bottom:8px">
+          <div class="ts dt"><table><thead><tr><th>Data</th><th>Descrição</th><th>Área</th><th>Centro de Custo</th><th>Cartão</th><th>Valor</th></tr></thead>
+          <tbody id="rt"></tbody></table></div>
+          <div class="ml" id="rm"></div>
+        </div>
+        <div id="r-mais" style="font-size:11px;color:var(--g400);margin-bottom:16px"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 12px">Relatórios agrupados (respeitam a seleção)</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
-          <div class="card" onclick="exportRel('base')" style="cursor:pointer">
-            <div class="cico g"><i class="fa-solid fa-table"></i></div>
-            <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Base de Lançamentos</div>
-            <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Todos os registros detalhados</div>
-            <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
-          </div>
           <div class="card" onclick="exportRel('cc')" style="cursor:pointer">
             <div class="cico b"><i class="fa-solid fa-layer-group"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Por Centro de Custo</div>
@@ -396,17 +403,26 @@ tbody tr:hover td{background:var(--g50)}
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Compromissos parcelados</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px"><i class="fa-solid fa-download"></i> Exportar Excel</button>
           </div>
-          <div class="card" id="card-backup-sql" onclick="backupCompleto()" style="cursor:pointer;display:none;border-left:3px solid var(--g700)">
+        </div>
+      </div>
+
+      <!-- BACKUP (admin only) -->
+      <div id="page-backup" class="page">
+        <div class="ptit">Backup</div>
+        <div class="psub">Cópia de segurança dos dados e comprovantes</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+          <div class="card" id="card-backup-sql" onclick="backupCompleto()" style="cursor:pointer;border-left:3px solid var(--g700)">
             <div class="cico b"><i class="fa-solid fa-database"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Backup completo do banco</div>
             <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Todos os dados (.sql) — restaura em outro banco</div>
             <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px;background:var(--g700)"><i class="fa-solid fa-download"></i> Baixar backup (.sql)</button>
           </div>
-          <div class="card" id="card-backup-comp" onclick="backupComprovantes()" style="cursor:pointer;display:none;border-left:3px solid var(--g700)">
+          <div class="card" id="card-backup-comp" style="border-left:3px solid var(--g700)">
             <div class="cico r"><i class="fa-solid fa-paperclip"></i></div>
             <div style="font-size:14px;font-weight:600;color:var(--g800);margin-bottom:3px">Backup dos comprovantes</div>
-            <div style="font-size:12px;color:var(--g400);margin-bottom:12px">Todas as fotos/PDFs anexados (.zip)</div>
-            <button class="badd" style="width:100%;justify-content:center;font-size:12px;padding:7px;background:var(--g700)"><i class="fa-solid fa-download"></i> Baixar comprovantes (.zip)</button>
+            <div style="font-size:12px;color:var(--g400);margin-bottom:10px">Fotos/PDFs anexados (.zip) — todas as áreas ou uma só</div>
+            <select id="bk-area" style="width:100%;margin-bottom:10px;padding:8px;border:1px solid var(--g300);border-radius:8px;font-family:inherit"><option value="">Todas as áreas</option></select>
+            <button class="badd" onclick="backupComprovantes()" style="width:100%;justify-content:center;font-size:12px;padding:7px;background:var(--g700)"><i class="fa-solid fa-download"></i> Baixar comprovantes (.zip)</button>
           </div>
         </div>
       </div>
@@ -783,7 +799,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -833,8 +849,7 @@ function startApp(){
 
   document.getElementById('sb-admin').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('btn-importar').style.display = isAdmin ? 'inline-flex' : 'none';
-  document.getElementById('card-backup-sql').style.display = isAdmin ? '' : 'none';
-  document.getElementById('card-backup-comp').style.display = isAdmin ? '' : 'none';
+  document.getElementById('sb-backup').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('sb-budget').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('mn-budget').style.display = isAdmin ? 'flex' : 'none';
 
@@ -1378,7 +1393,7 @@ async function renderUsuarios(){
     <td>${badge(u)}</td>
     <td>${u.area}</td>
     <td style="font-size:11px">${cartoes[0]||'Sem cartão'}</td>
-    <td>${statusTxt(ativo)}</td></tr>`;
+    <td>${statusTxt(ativo)}${u.email!==CU.email?` <button onclick="removerUsuario('${u.email}',\`${(u.name||'').replace(/[\`\\\\]/g,'')}\`)" style="margin-left:8px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:'DM Sans',sans-serif" title="Remover da lista de usuários"><i class="fa-solid fa-user-minus"></i> Remover</button>`:''}</td></tr>`;
   }).join('');
 
   document.getElementById('um').innerHTML=emails.map(u=>{
@@ -1389,6 +1404,7 @@ async function renderUsuarios(){
       <div class="mcr" style="margin-top:4px"><span class="mci" style="font-size:11px;word-break:break-all">${u.email}</span></div>
       <div class="mcr" style="margin-top:4px"><span class="mci">${u.area}</span><span class="mci">${statusTxt(ativo)}</span></div>
       <div class="mcr" style="margin-top:3px"><span class="mci" style="font-size:11px">${cartoes[0]||'Sem cartão'}</span></div>
+      ${u.email!==CU.email?`<div class="mcr" style="margin-top:6px"><button onclick="removerUsuario('${u.email}',\`${(u.name||'').replace(/[\`\\\\]/g,'')}\`)" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:'DM Sans',sans-serif"><i class="fa-solid fa-user-minus"></i> Remover</button></div>`:''}
     </div>`;
   }).join('');
 
@@ -1423,6 +1439,18 @@ async function aprovarPedido(id,email,nome){
 async function recusarPedido(id){
   await sb.from('access_requests').update({status:'recusado'}).eq('id',id);
   showToast('Pedido recusado');
+  renderUsuarios();
+}
+
+async function removerUsuario(email, nome){
+  if(!CU || CU.profile!=='admin') return;
+  if(email===CU.email){ showToast('Você não pode remover a si mesma'); return; }
+  if(!confirm('Remover '+(nome||email)+' da lista de usuários?\n\n'+
+    'A pessoa sai da lista e perde a autorização de acesso.\n'+
+    'Os lançamentos existentes dela NÃO são apagados.')) return;
+  const {error}=await sb.from('allowed_emails').delete().eq('email',email);
+  if(error){ showToast('Erro ao remover: '+error.message); return; }
+  showToast((nome||email)+' removido(a) da lista ✓');
   renderUsuarios();
 }
 
@@ -1792,12 +1820,45 @@ function buildRelFilters(){
   }
   const ru=document.getElementById('r-user');
   if(ru){
-    const us=[...new Set(getMyLanc().map(l=>l.user).filter(Boolean))].sort();
+    // Catia é só administradora (não usa cartão) — fica fora do filtro de responsáveis
+    const us=[...new Set(getMyLanc().map(l=>l.user).filter(Boolean))].filter(u=>u!=='Catia').sort();
     const cur=ru.value;
     ru.innerHTML='<option value="">Todos os responsáveis</option>'+us.map(u=>`<option value="${u}">${u}</option>`).join('');
     if(us.includes(cur)) ru.value=cur;
   }
+  const bka=document.getElementById('bk-area');
+  if(bka){
+    const areas=[...new Set(lancamentos.map(l=>areaNorm(l.area)).filter(Boolean))].sort();
+    const cur=bka.value;
+    bka.innerHTML='<option value="">Todas as áreas</option>'+areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+    if(areas.includes(cur)) bka.value=cur;
+  }
   atualizarResumoRel();
+}
+
+// Tabela de dados na tela de Relatórios (mostra a seleção atual)
+function renderRelTable(){
+  const tb=document.getElementById('rt'), mb=document.getElementById('rm');
+  if(!tb||!mb||!CU) return;
+  const list=relBase();
+  const MAXV=300;
+  const view=list.slice(0,MAXV);
+  const mais=document.getElementById('r-mais');
+  if(mais) mais.textContent = list.length>MAXV
+    ? 'Mostrando os primeiros '+MAXV+' de '+list.length+' lançamentos — o download em Excel traz todos.'
+    : '';
+  tb.innerHTML=view.map(l=>`<tr>
+    <td>${l.data}</td>
+    <td title="${l.desc}">${l.desc}</td>
+    <td>${l.area}</td>
+    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.cc}">${l.cc}</td>
+    <td style="font-size:11px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.cartao}">${l.cartao?.split(' - FINAL')[0]||'—'}</td>
+    <td class="tv neg">${fmt(l.valor)}</td></tr>`).join('');
+  mb.innerHTML=view.map(l=>`<div class="mc">
+    <div class="mct"><span class="mcd">${l.desc}</span><span class="mcv">${fmt(l.valor)}</span></div>
+    <div class="mcr"><span class="badge bgr">${l.area}</span><span class="mci">${l.data}</span></div>
+    <div class="mcr" style="margin-top:3px"><span class="mci" style="font-size:11px">${l.cc}</span></div>
+  </div>`).join('');
 }
 
 // Resumo ao vivo do que a seleção atual vai exportar
@@ -1806,6 +1867,7 @@ function atualizarResumoRel(){
   if(!el || !CU) return;
   const list=relBase();
   el.textContent = 'Seleção atual: '+list.length+' lançamentos · total '+fmt(list.reduce((s,l)=>s+l.valor,0));
+  renderRelTable();
 }
 function csvCell(v){
   v = (v===null||v===undefined) ? '' : String(v);
@@ -1898,22 +1960,31 @@ async function backupCompleto(){
 async function backupComprovantes(){
   if(!CU || CU.profile!=='admin'){ showToast('Somente o Financeiro pode gerar o backup'); return; }
   if(typeof JSZip==='undefined'){ showToast('Biblioteca de ZIP não carregou — confira a internet'); return; }
-  showToast('Listando comprovantes...');
-  const {data:files, error} = await sb.storage.from('comprovantes').list('', {limit:1000});
-  if(error){ showToast('Erro ao listar: '+error.message); return; }
-  const lista=(files||[]).filter(f=>f.name && !f.name.startsWith('.'));
-  if(!lista.length){ showToast('Nenhum comprovante para baixar'); return; }
+  const area=document.getElementById('bk-area')?.value || '';
+  let alvos=[];
+  if(area){
+    // comprovantes apenas dos lançamentos da área selecionada
+    alvos=lancamentos.filter(l=>l.comp && areaMatch(l,area)).map(l=>l.id+'.'+l.comp);
+    if(!alvos.length){ showToast('Nenhum comprovante na área '+area); return; }
+  } else {
+    showToast('Listando comprovantes...');
+    const {data:files, error} = await sb.storage.from('comprovantes').list('', {limit:1000});
+    if(error){ showToast('Erro ao listar: '+error.message); return; }
+    alvos=(files||[]).filter(f=>f.name && !f.name.startsWith('.')).map(f=>f.name);
+    if(!alvos.length){ showToast('Nenhum comprovante para baixar'); return; }
+  }
   const zip=new JSZip();
   let ok=0;
-  for(const f of lista){
-    showToast('Baixando '+(ok+1)+' de '+lista.length+'...');
-    const {data,error:e2}=await sb.storage.from('comprovantes').download(f.name);
-    if(!e2 && data){ zip.file(f.name, data); ok++; }
+  for(const nome of alvos){
+    showToast('Baixando '+(ok+1)+' de '+alvos.length+'...');
+    const {data,error:e2}=await sb.storage.from('comprovantes').download(nome);
+    if(!e2 && data){ zip.file(nome, data); ok++; }
   }
   showToast('Compactando...');
   const blob=await zip.generateAsync({type:'blob'});
-  await baixarArquivo('BWR_comprovantes_'+hojeArq()+'.zip', blob);
-  showToast('Comprovantes baixados ✓ ('+ok+' arquivos)');
+  const sufA=area ? '_'+area.replace(/[^\wÀ-ú]+/g,'-') : '';
+  await baixarArquivo('BWR_comprovantes'+sufA+'_'+hojeArq()+'.zip', blob);
+  showToast('Comprovantes baixados ✓ ('+ok+' arquivos'+(area?' · '+area:'')+')');
 }
 function exportRel(tipo){
   const list = relBase();
