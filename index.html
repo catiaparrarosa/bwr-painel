@@ -799,7 +799,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 window.addEventListener('DOMContentLoaded', async ()=>{
   const lv=document.getElementById('lver'); if(lv) lv.textContent='BWR Painel · versão '+APP_VERSION;
   if(DB_OK){
@@ -837,7 +837,8 @@ function startApp(){
   // Cartoes in modal
   const fc=document.getElementById('f-cartao');
   fc.innerHTML='';
-  (CU.cartoes.length?CU.cartoes:['Sem cartão']).forEach(c=>{const o=document.createElement('option');o.textContent=c;fc.appendChild(o);});
+  const cartoesCU = cartoesDoUsuario(CU);
+  (cartoesCU.length?cartoesCU:['Sem cartão']).forEach(c=>{const o=document.createElement('option');o.textContent=c;fc.appendChild(o);});
 
   // Date default
   document.getElementById('f-data').value=new Date().toISOString().split('T')[0];
@@ -1233,7 +1234,8 @@ function openEditM(id){
 
   // Cartão
   const eCartao = document.getElementById('e-cartao');
-  const cartoes = CU.cartoes.length ? CU.cartoes : (l.cartao?[l.cartao]:[]);
+  const cartoesBase = cartoesDoUsuario(CU);
+  const cartoes = cartoesBase.length ? cartoesBase : (l.cartao?[l.cartao]:[]);
   const todosCartoes = [...new Set([...cartoes, ...(l.cartao?[l.cartao]:[])])];
   eCartao.innerHTML = todosCartoes.map(c=>`<option value="${c}">${c}</option>`).join('');
   eCartao.value = l.cartao||'';
@@ -1329,6 +1331,24 @@ const AREA_RESP = {
   'Serv. Gerais':         {nome:'Marleide', cartao:'9025'},
   'Apprenti':             {nome:'Karen',    cartao:'1526'}
 };
+// Cartões de cada área (fonte de verdade no código — não depende do cadastro do banco).
+// Para trocar o cartão de uma pessoa/área, basta editar aqui.
+const AREA_CARTOES = {
+  'Financeiro':  [],
+  'Diretoria':   ['Cartão BWR (Titular - corporativo)','ROSILENE CUNHA PORTO PEDROSO - FINAL 0842 (venc.20)','ROSILENE CUNHA PORTO PEDROSO - FINAL 9142 (venc.26)'],
+  'Emissão':     ['JULIA MENEZES SOBRAL - FINAL 0386'],
+  'Pós-vendas':  ['JULIA MENEZES SOBRAL - FINAL 0386'],
+  'Matriz':      ['BRUNA PORTO PEDROSO - FINAL 3092','BRUNA PORTO PEDROSO - FINAL 1419'],
+  'Alpha':       ['LUCAS FERNANDO NOGUEIRA - FINAL 1713'],
+  'Serv. Gerais':['MARLEIDE LEITE DA SILVA - FINAL 9025'],
+  'Apprenti':    ['KAREN PORTO PEDROSO - FINAL 1526']
+};
+function cartoesDoUsuario(u){
+  if(!u) return [];
+  if(u.area==='Emissão / Pós-vendas') return AREA_CARTOES['Emissão']||[];
+  const area = u.area || (u.areas && u.areas[0]);
+  return (AREA_CARTOES[area] && AREA_CARTOES[area].length) ? AREA_CARTOES[area] : (Array.isArray(u.cartoes)?u.cartoes:[]);
+}
 function renderBudget(){
   const mes=document.getElementById('b-mes')?.value || '';
   const editBtn=document.getElementById('btn-edit-budget');
@@ -1385,7 +1405,7 @@ async function renderUsuarios(){
 
   document.getElementById('ut').innerHTML=emails.map(u=>{
     const ativo=!!pmap[u.email];
-    const cartoes=Array.isArray(u.cartoes)?u.cartoes:[];
+    const cartoes=cartoesDoUsuario(u);
     return `<tr>
     <td><div style="display:flex;align-items:center;gap:8px">
       <div class="uav" style="width:28px;height:28px;font-size:10px">${u.initials}</div><strong>${u.name}</strong></div></td>
@@ -1398,7 +1418,7 @@ async function renderUsuarios(){
 
   document.getElementById('um').innerHTML=emails.map(u=>{
     const ativo=!!pmap[u.email];
-    const cartoes=Array.isArray(u.cartoes)?u.cartoes:[];
+    const cartoes=cartoesDoUsuario(u);
     return `<div class="mc">
       <div class="mct"><span style="display:flex;align-items:center;gap:8px"><span class="uav" style="width:26px;height:26px;font-size:10px">${u.initials}</span><span class="mcd">${u.name}</span></span>${badge(u)}</div>
       <div class="mcr" style="margin-top:4px"><span class="mci" style="font-size:11px;word-break:break-all">${u.email}</span></div>
