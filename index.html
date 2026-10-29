@@ -232,7 +232,7 @@ tbody tr:hover td{background:var(--g50)}
       <input type="text" id="lreq-nome" placeholder="Seu nome completo" style="width:100%;padding:10px;border:1px solid var(--g300);border-radius:8px;margin-bottom:8px;font-family:inherit;box-sizing:border-box">
       <button onclick="enviarPedidoAcesso()" style="width:100%;background:var(--red);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit">Enviar pedido de acesso</button>
     </div>
-    <div id="lmaint" style="display:none;margin-top:16px;padding:11px 13px;border:1px solid #F4C86A;background:#FEF6E6;border-radius:10px;font-size:12.5px;color:#7A5200;text-align:center">🔧 <strong>Sistema em manutenção</strong><br>O acesso está temporariamente liberado apenas ao administrador.</div>
+    <div id="lmaint" style="display:none;margin-top:16px;padding:11px 13px;border:1px solid #F4C86A;background:#FEF6E6;border-radius:10px;font-size:12.5px;color:#7A5200;text-align:center">⚠️ <strong>Sistema temporariamente suspenso para manutenção.</strong></div>
     <div id="lver" style="margin-top:16px;text-align:center;font-size:11px;color:var(--g400)"></div>
 
   </div>
@@ -792,7 +792,7 @@ async function entrar(){
   if(MODO_SUSPENSO && CU.profile!=='admin'){
     CU=null;
     await sb.auth.signOut();
-    lerrMsg('⚠️ Sistema temporariamente suspenso para manutenção. No momento o acesso está liberado apenas ao administrador. Fale com o Financeiro.');
+    lerrMsg('⚠️ Sistema temporariamente suspenso para manutenção.');
     return false;
   }
   await Promise.all([loadLancamentos(), loadBudgets()]);
@@ -807,7 +807,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
 }
 
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 // ── MODO SUSPENSO ──────────────────────────────────────
 // true  = acesso liberado SOMENTE ao administrador (Financeiro); demais usuários bloqueados.
 // false = sistema liberado normalmente para todos.
